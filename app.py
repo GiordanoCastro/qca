@@ -27,8 +27,8 @@ db.init_app(app)
 with app.app_context():
     try:
         db.create_all()
-        # Si la base de datos está vacía, sembrar automáticamente
-        if Usuario.query.count() == 0 or Laboratorio.query.count() == 0:
+        # Si la base de datos no tiene administrador o laboratorios, inicializar estructura base sin datos ficticios
+        if Usuario.query.filter_by(username='admin').first() is None or Laboratorio.query.count() == 0:
             from seed import seed_database
             seed_database(app, reset=False)
     except Exception as e:

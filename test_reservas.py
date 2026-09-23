@@ -192,8 +192,26 @@ class TestSistemaReservasQuimicaPostgres(unittest.TestCase):
     def test_06_bitacora_de_cierre_post_sesion(self):
         """Verifica cierre de bitácora y reporte de novedades por el docente titular o admin"""
         with app.app_context():
-            res = Reserva.query.filter_by(estado='CONFIRMADA').first()
-            self.assertIsNotNone(res)
+            admin = Usuario.query.filter_by(username='admin').first()
+            lab = Laboratorio.query.first()
+            res = Reserva(
+                codigo_reserva=Reserva.generar_codigo(),
+                laboratorio_id=lab.id,
+                usuario_id=admin.id,
+                docente_nombre='Docente Bitacora',
+                docente_email='bitacora@quimica.edu',
+                docente_departamento='Departamento de Química',
+                asignatura='Química Experimental',
+                cantidad_alumnos=15,
+                titulo_practica='Práctica de Calibración',
+                fecha='2026-11-25',
+                hora_inicio='10:00',
+                hora_fin='12:00',
+                estado='CONFIRMADA',
+                bitacora_plan='Plan inicial'
+            )
+            db.session.add(res)
+            db.session.commit()
 
             # Iniciar sesión como admin o dueño de la reserva
             self.app.post('/login', data={'username': 'admin', 'password': 'admin123'})
@@ -213,11 +231,34 @@ class TestSistemaReservasQuimicaPostgres(unittest.TestCase):
     def test_07_aislamiento_cancelacion_reservas(self):
         """Asegura que un docente NO pueda cancelar la reserva de otro docente, pero sí la suya y el admin cualquiera"""
         with app.app_context():
-            d1 = Usuario.query.filter_by(username='docente1').first()
-            d2 = Usuario.query.filter_by(username='docente2').first()
             lab = Laboratorio.query.first()
-            self.assertIsNotNone(d1)
-            self.assertIsNotNone(d2)
+            d1 = Usuario.query.filter_by(username='docente1').first()
+            if not d1:
+                d1 = Usuario(
+                    username='docente1',
+                    email='m.fuenzalida@quimica.edu',
+                    nombre_completo='Dra. Marcela Fuenzalida',
+                    departamento='Departamento de Química Orgánica',
+                    rol='docente',
+                    activo=True
+                )
+                d1.set_password('docente123')
+                db.session.add(d1)
+
+            d2 = Usuario.query.filter_by(username='docente2').first()
+            if not d2:
+                d2 = Usuario(
+                    username='docente2',
+                    email='r.valenzuela@quimica.edu',
+                    nombre_completo='Prof. Roberto Valenzuela',
+                    departamento='Departamento de Química Analítica',
+                    rol='docente',
+                    activo=True
+                )
+                d2.set_password('docente123')
+                db.session.add(d2)
+
+            db.session.commit()
 
             # Crear reservas explícitas para la prueba
             res_d1 = Reserva(
@@ -287,6 +328,20 @@ class TestSistemaReservasQuimicaPostgres(unittest.TestCase):
     def test_08_crud_usuarios_admin(self):
         """Verifica control de acceso y ciclo de CRUD de Usuarios en el Panel Administrativo"""
         with app.app_context():
+            d1 = Usuario.query.filter_by(username='docente1').first()
+            if not d1:
+                d1 = Usuario(
+                    username='docente1',
+                    email='m.fuenzalida@quimica.edu',
+                    nombre_completo='Dra. Marcela Fuenzalida',
+                    departamento='Departamento de Química Orgánica',
+                    rol='docente',
+                    activo=True
+                )
+                d1.set_password('docente123')
+                db.session.add(d1)
+                db.session.commit()
+
             # 1. Un docente regular NO puede acceder al CRUD de usuarios
             self.app.get('/logout')
             self.app.post('/login', data={'username': 'docente1', 'password': 'docente123'})
@@ -357,8 +412,39 @@ class TestSistemaReservasQuimicaPostgres(unittest.TestCase):
     def test_09_aislamiento_mis_reservas(self):
         """Verifica que /mis-reservas muestre únicamente las reservas pertenecientes al docente autenticado"""
         with app.app_context():
+            lab = Laboratorio.query.first()
             d1 = Usuario.query.filter_by(username='docente1').first()
+            if not d1:
+                d1 = Usuario(username='docente1', email='m.fuenzalida@quimica.edu', nombre_completo='Dra. Marcela Fuenzalida', departamento='Química Orgánica', rol='docente', activo=True)
+                d1.set_password('docente123')
+                db.session.add(d1)
+
             d2 = Usuario.query.filter_by(username='docente2').first()
+            if not d2:
+                d2 = Usuario(username='docente2', email='r.valenzuela@quimica.edu', nombre_completo='Prof. Roberto Valenzuela', departamento='Química Analítica', rol='docente', activo=True)
+                d2.set_password('docente123')
+                db.session.add(d2)
+            db.session.commit()
+
+            # Crear una reserva para docente2
+            res_d2 = Reserva(
+                codigo_reserva=Reserva.generar_codigo(),
+                laboratorio_id=lab.id,
+                usuario_id=d2.id,
+                docente_nombre=d2.nombre_completo,
+                docente_email=d2.email,
+                docente_departamento=d2.departamento,
+                asignatura='Prueba Aislamiento D2',
+                cantidad_alumnos=5,
+                titulo_practica='Práctica Privada D2',
+                fecha='2026-12-15',
+                hora_inicio='11:00',
+                hora_fin='12:30',
+                estado='CONFIRMADA',
+                bitacora_plan='Plan D2'
+            )
+            db.session.add(res_d2)
+            db.session.commit()
 
             # Iniciar sesión como docente1
             self.app.get('/logout')
@@ -367,9 +453,7 @@ class TestSistemaReservasQuimicaPostgres(unittest.TestCase):
             self.assertEqual(resp.status_code, 200)
 
             # docente1 debe ver sus reservas o datos pero no los códigos exclusivos de docente2
-            res_d2 = Reserva.query.filter_by(usuario_id=d2.id).first()
-            if res_d2:
-                self.assertNotIn(res_d2.codigo_reserva, resp.text)
+            self.assertNotIn(res_d2.codigo_reserva, resp.text)
 
 if __name__ == '__main__':
     unittest.main()

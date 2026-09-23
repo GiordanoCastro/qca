@@ -7,14 +7,31 @@ from models import db, Usuario, Laboratorio, ElementoLaboratorio, Reserva
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'clave-secreta-laboratorios-quimica-2026'
 
-# Conexión a PostgreSQL (PostgreSQL 18 en local)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+# Conexión a PostgreSQL (local o nube Vercel / Neon / Supabase)
+db_url = os.environ.get(
     'DATABASE_URL',
     'postgresql+psycopg2://postgres:123456@localhost:5432/reservas_quimica_db'
 )
+if db_url.startswith('postgres://'):
+    db_url = db_url.replace('postgres://', 'postgresql+psycopg2://', 1)
+elif db_url.startswith('postgresql://') and not db_url.startswith('postgresql+psycopg2://'):
+    db_url = db_url.replace('postgresql://', 'postgresql+psycopg2://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+
+# Inicialización segura para entornos serverless (Vercel)
+with app.app_context():
+    try:
+        db.create_all()
+        # Si la base de datos está vacía, sembrar automáticamente
+        if Usuario.query.count() == 0 or Laboratorio.query.count() == 0:
+            from seed import seed_database
+            seed_database(app, reset=False)
+    except Exception as e:
+        print("Aviso al verificar/inicializar base de datos:", e)
 
 # Configuración de Flask-Login
 login_manager = LoginManager()

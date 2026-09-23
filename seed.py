@@ -1,22 +1,29 @@
 from datetime import datetime, date, timedelta
 from models import db, Usuario, Laboratorio, ElementoLaboratorio, Reserva
 
-def seed_database(app):
+def seed_database(app, reset=False):
     with app.app_context():
-        # Limpiar si ya existe
-        db.drop_all()
+        if reset:
+            db.drop_all()
         db.create_all()
 
+        # Si ya existe información y no es reset, salir para evitar duplicados
+        if not reset and (Usuario.query.count() > 0 and Laboratorio.query.count() > 0):
+            print("La base de datos ya cuenta con datos iniciales.")
+            return
+
         # 0. Usuario Administrador del Sistema
-        admin = Usuario(
-            username='admin',
-            email='admin@quimica.edu',
-            nombre_completo='Administrador General de Laboratorios',
-            rol='admin',
-            activo=True
-        )
-        admin.set_password('admin123')
-        db.session.add(admin)
+        admin = Usuario.query.filter_by(username='admin').first()
+        if not admin:
+            admin = Usuario(
+                username='admin',
+                email='admin@quimica.edu',
+                nombre_completo='Administrador General de Laboratorios',
+                rol='admin',
+                activo=True
+            )
+            admin.set_password('admin123')
+            db.session.add(admin)
 
         # 1. Laboratorio de Química Orgánica y Síntesis
         lab_organica = Laboratorio(
@@ -137,10 +144,10 @@ def seed_database(app):
             fecha_cierre_bitacora=datetime.now() - timedelta(days=1)
         )
         db.session.add(res_ayer)
-        res_ayer.elementos.append(elem_org[0]) # Campana
-        res_ayer.elementos.append(elem_org[2]) # Plancha calefactora
-        res_ayer.elementos.append(elem_org[4]) # Kit vidriería
-        res_ayer.elementos.append(elem_org[6]) # Línea de vacío
+        res_ayer.elementos.append(elem_org[0])
+        res_ayer.elementos.append(elem_org[2])
+        res_ayer.elementos.append(elem_org[4])
+        res_ayer.elementos.append(elem_org[6])
 
         # 2. Reserva hoy (CONFIRMADA - Práctica en la mañana)
         res_hoy = Reserva(
@@ -161,9 +168,9 @@ def seed_database(app):
             observaciones_seguridad='Uso estricto de celdas de cuarzo limpias con papel lente. No tocar superficies ópticas con los dedos.'
         )
         db.session.add(res_hoy)
-        res_hoy.elementos.append(elem_ana[0]) # Balanza
-        res_hoy.elementos.append(elem_ana[1]) # Espectrofotómetro
-        res_hoy.elementos.append(elem_ana[2]) # pH-metro
+        res_hoy.elementos.append(elem_ana[0])
+        res_hoy.elementos.append(elem_ana[1])
+        res_hoy.elementos.append(elem_ana[2])
 
         # 3. Reserva mañana (CONFIRMADA - Práctica de la tarde)
         res_manana = Reserva(
@@ -184,14 +191,14 @@ def seed_database(app):
             observaciones_seguridad='Manipulación de ácido clorhídrico 6 M bajo supervisión de ayudantes. Gafas de protección obligatorias en todo momento.'
         )
         db.session.add(res_manana)
-        res_manana.elementos.append(elem_gen[0]) # Mecheros
-        res_manana.elementos.append(elem_gen[1]) # Campana
-        res_manana.elementos.append(elem_gen[2]) # Balanzas
-        res_manana.elementos.append(elem_gen[3]) # Buretas
+        res_manana.elementos.append(elem_gen[0])
+        res_manana.elementos.append(elem_gen[1])
+        res_manana.elementos.append(elem_gen[2])
+        res_manana.elementos.append(elem_gen[3])
 
         db.session.commit()
-        print("Base de datos PostgreSQL inicializada exitosamente con usuario administrador (admin/admin123), laboratorios, elementos y reservas con bitácoras.")
+        print("Base de datos inicializada exitosamente.")
 
 if __name__ == '__main__':
     from app import app
-    seed_database(app)
+    seed_database(app, reset=True)

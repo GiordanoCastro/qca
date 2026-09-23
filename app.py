@@ -1,4 +1,5 @@
 import os
+from functools import wraps
 from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, redirect, url_for, flash, jsonify
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
@@ -37,12 +38,23 @@ with app.app_context():
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
-login_manager.login_message = 'Debes iniciar sesión como administrador para acceder a esta función.'
+login_manager.login_message = 'Debes iniciar sesión con tu cuenta para acceder a esta función.'
 login_manager.login_message_category = 'warning'
 
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(Usuario, int(user_id))
+
+# Decorador de control de acceso para Administradores
+def admin_required(f):
+    @wraps(f)
+    @login_required
+    def decorated_function(*args, **kwargs):
+        if not current_user.is_authenticated or current_user.rol != 'admin':
+            flash('Acceso denegado: Se requieren permisos de Administrador.', 'danger')
+            return redirect(url_for('index'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 HORA_MINIMA_MINUTOS = 8 * 60 + 30   # 08:30 -> 510 min
 HORA_MAXIMA_MINUTOS = 18 * 60 + 30  # 18:30 -> 1110 min
@@ -103,7 +115,9 @@ def hay_solapamiento(laboratorio_id, fecha_str, hora_ini_str, hora_fin_str, excl
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated:
-        return redirect(url_for('admin'))
+        if current_user.rol == 'admin':
+            return redirect(url_for('admin'))
+        return redirect(url_for('mis_reservas'))
 
     if request.method == 'POST':
         username_o_email = request.form.get('username', '').strip()
@@ -115,13 +129,17 @@ def login():
 
         if usuario and usuario.check_password(password):
             if not usuario.activo:
-                flash('Tu cuenta se encuentra inactiva. Contacta al soporte.', 'danger')
+                flash('Tu cuenta se encuentra inactiva. Contacta al administrador del sistema.', 'danger')
                 return redirect(url_for('login'))
 
             login_user(usuario)
             flash(f'¡Bienvenido/a, {usuario.nombre_completo or usuario.username}!', 'success')
             next_page = request.args.get('next')
-            return redirect(next_page or url_for('admin'))
+            if next_page:
+                return redirect(next_page)
+            if usuario.rol == 'admin':
+                return redirect(url_for('admin'))
+            return redirect(url_for('mis_reservas'))
         else:
             flash('Usuario o contraseña incorrectos. Verifica tus credenciales.', 'danger')
 
@@ -160,14 +178,15 @@ def index():
     )
 
 @app.route('/reservar', methods=['GET', 'POST'])
+@login_required
 def reservar():
     laboratorios = Laboratorio.query.filter_by(activo=True).all()
     
     if request.method == 'POST':
         lab_id = request.form.get('laboratorio_id', type=int)
-        docente_nombre = request.form.get('docente_nombre', '').strip()
-        docente_email = request.form.get('docente_email', '').strip()
-        docente_departamento = request.form.get('docente_departamento', '').strip()
+        docente_nombre = request.form.get('docente_nombre', '').strip() or current_user.nombre_completo or current_user.username
+        docente_email = request.form.get('docente_email', '').strip() or current_user.email
+        docente_departamento = request.form.get('docente_departamento', '').strip() or current_user.departamento or 'Departamento de Química'
         asignatura = request.form.get('asignatura', '').strip()
         cantidad_alumnos = request.form.get('cantidad_alumnos', type=int, default=1)
         titulo_practica = request.form.get('titulo_practica', '').strip()
@@ -213,9 +232,10 @@ def reservar():
         nueva_reserva = Reserva(
             codigo_reserva=codigo,
             laboratorio_id=lab_id,
+            usuario_id=current_user.id,
             docente_nombre=docente_nombre,
             docente_email=docente_email,
-            docente_departamento=docente_departamento or 'Departamento de Química',
+            docente_departamento=docente_departamento,
             asignatura=asignatura,
             cantidad_alumnos=cantidad_alumnos,
             titulo_practica=titulo_practica,
@@ -253,9 +273,15 @@ def ver_reserva(codigo):
     return render_template('reserva_detalle.html', reserva=reserva)
 
 @app.route('/reserva/<codigo>/bitacora', methods=['POST'])
+@login_required
 def actualizar_bitacora(codigo):
     reserva = Reserva.query.filter_by(codigo_reserva=codigo).first_or_404()
     
+    # Control de acceso: solo el creador o un admin pueden modificar la bitácora
+    if current_user.rol != 'admin' and reserva.usuario_id != current_user.id:
+        flash('Acceso denegado: No tienes permisos para registrar la bitácora de una reserva creada por otro docente.', 'danger')
+        return redirect(url_for('ver_reserva', codigo=codigo))
+
     bitacora_cierre = request.form.get('bitacora_cierre', '').strip()
     incidentes_novedades = request.form.get('incidentes_novedades', '').strip()
     estado_devolucion = request.form.get('estado_devolucion', 'Conforme y Limpio')
@@ -268,7 +294,7 @@ def actualizar_bitacora(codigo):
     reserva.bitacora_cierre = bitacora_cierre
     reserva.incidentes_novedades = incidentes_novedades or 'Sin incidentes reportados.'
     reserva.estado_devolucion = estado_devolucion
-    reserva.responsable_cierre = responsable_cierre or reserva.docente_nombre
+    reserva.responsable_cierre = responsable_cierre or current_user.nombre_completo or reserva.docente_nombre
     reserva.fecha_cierre_bitacora = datetime.now()
     reserva.estado = 'COMPLETADA'
 
@@ -277,8 +303,15 @@ def actualizar_bitacora(codigo):
     return redirect(url_for('ver_reserva', codigo=codigo))
 
 @app.route('/reserva/<codigo>/cancelar', methods=['POST'])
+@login_required
 def cancelar_reserva(codigo):
     reserva = Reserva.query.filter_by(codigo_reserva=codigo).first_or_404()
+
+    # Control de acceso: Solo el dueño de la reserva o un administrador pueden cancelarla
+    if current_user.rol != 'admin' and reserva.usuario_id != current_user.id:
+        flash('Acceso denegado: No puedes cancelar una reserva perteneciente a otro docente o usuario.', 'danger')
+        return redirect(url_for('ver_reserva', codigo=codigo))
+
     reserva.estado = 'CANCELADA'
     db.session.commit()
     flash(f'La reserva {codigo} ha sido cancelada correctamente y el laboratorio queda liberado.', 'info')
@@ -334,31 +367,64 @@ def bitacoras():
     )
 
 @app.route('/mis-reservas', methods=['GET', 'POST'])
+@login_required
 def mis_reservas():
+    es_admin = (current_user.rol == 'admin')
     email = request.args.get('email', '').strip()
     codigo = request.args.get('codigo', '').strip()
-    reservas = []
+    criterio = request.args.get('q', '').strip()
 
     if request.method == 'POST':
-        criterio = request.form.get('criterio', '').strip()
-        if '@' in criterio:
-            return redirect(url_for('mis_reservas', email=criterio))
-        else:
-            return redirect(url_for('mis_reservas', codigo=criterio.upper()))
+        criterio_post = request.form.get('criterio', '').strip()
+        if '@' in criterio_post:
+            return redirect(url_for('mis_reservas', email=criterio_post))
+        elif criterio_post:
+            return redirect(url_for('mis_reservas', q=criterio_post))
+        return redirect(url_for('mis_reservas'))
 
-    if email:
-        reservas = Reserva.query.filter(
-            Reserva.docente_email.ilike(f"%{email}%")
-        ).order_by(Reserva.fecha.desc()).all()
-    elif codigo:
-        reservas = Reserva.query.filter(
-            Reserva.codigo_reserva.ilike(f"%{codigo}%")
-        ).all()
+    if es_admin:
+        query = Reserva.query
+        if email:
+            query = query.filter(Reserva.docente_email.ilike(f"%{email}%"))
+        elif codigo:
+            query = query.filter(Reserva.codigo_reserva.ilike(f"%{codigo}%"))
+        elif criterio:
+            term = f"%{criterio}%"
+            query = query.filter(
+                (Reserva.codigo_reserva.ilike(term)) |
+                (Reserva.docente_nombre.ilike(term)) |
+                (Reserva.docente_email.ilike(term)) |
+                (Reserva.asignatura.ilike(term)) |
+                (Reserva.titulo_practica.ilike(term))
+            )
+        reservas = query.order_by(Reserva.fecha.desc(), Reserva.hora_inicio.desc()).all()
+    else:
+        query = Reserva.query.filter(
+            (Reserva.usuario_id == current_user.id) |
+            ((Reserva.usuario_id.is_(None)) & (Reserva.docente_email.ilike(current_user.email)))
+        )
+        if codigo:
+            query = query.filter(Reserva.codigo_reserva.ilike(f"%{codigo}%"))
+        elif criterio:
+            term = f"%{criterio}%"
+            query = query.filter(
+                (Reserva.codigo_reserva.ilike(term)) |
+                (Reserva.asignatura.ilike(term)) |
+                (Reserva.titulo_practica.ilike(term))
+            )
+        reservas = query.order_by(Reserva.fecha.desc(), Reserva.hora_inicio.desc()).all()
 
-    return render_template('mis_reservas.html', reservas=reservas, email=email, codigo=codigo)
+    return render_template(
+        'mis_reservas.html',
+        reservas=reservas,
+        email=email,
+        codigo=codigo,
+        criterio=criterio,
+        es_admin=es_admin
+    )
 
 @app.route('/admin')
-@login_required
+@admin_required
 def admin():
     hoy = date.today().strftime('%Y-%m-%d')
     reservas_hoy = Reserva.query.filter(
@@ -373,6 +439,7 @@ def admin():
 
     laboratorios = Laboratorio.query.all()
     total_materiales = ElementoLaboratorio.query.count()
+    total_usuarios = Usuario.query.count()
 
     return render_template(
         'admin.html',
@@ -380,19 +447,20 @@ def admin():
         proximas_reservas=proximas_reservas,
         laboratorios=laboratorios,
         total_materiales=total_materiales,
+        total_usuarios=total_usuarios,
         hoy=hoy
     )
 
 # --- CRUD DE LABORATORIOS ---
 
 @app.route('/admin/laboratorios')
-@login_required
+@admin_required
 def admin_laboratorios():
     laboratorios = Laboratorio.query.order_by(Laboratorio.codigo).all()
     return render_template('admin_laboratorios.html', laboratorios=laboratorios)
 
 @app.route('/admin/laboratorios/nuevo', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def admin_laboratorio_nuevo():
     if request.method == 'POST':
         codigo = request.form.get('codigo', '').strip().upper()
@@ -429,7 +497,7 @@ def admin_laboratorio_nuevo():
     return render_template('admin_laboratorio_form.html', lab=None)
 
 @app.route('/admin/laboratorios/<int:id>/editar', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def admin_laboratorio_editar(id):
     lab = db.session.get(Laboratorio, id)
     if not lab:
@@ -471,7 +539,7 @@ def admin_laboratorio_editar(id):
     return render_template('admin_laboratorio_form.html', lab=lab)
 
 @app.route('/admin/laboratorios/<int:id>/eliminar', methods=['POST'])
-@login_required
+@admin_required
 def admin_laboratorio_eliminar(id):
     lab = db.session.get(Laboratorio, id)
     if not lab:
@@ -486,7 +554,7 @@ def admin_laboratorio_eliminar(id):
     return redirect(url_for('admin_laboratorios'))
 
 @app.route('/admin/laboratorios/<int:id>/toggle', methods=['POST'])
-@login_required
+@admin_required
 def admin_laboratorio_toggle(id):
     lab = db.session.get(Laboratorio, id)
     if lab:
@@ -499,7 +567,7 @@ def admin_laboratorio_toggle(id):
 # --- CRUD DE MATERIALES Y EQUIPOS ---
 
 @app.route('/admin/materiales')
-@login_required
+@admin_required
 def admin_materiales():
     lab_id = request.args.get('lab_id', type=int)
     categoria = request.args.get('categoria', '').strip()
@@ -537,7 +605,7 @@ def admin_materiales():
     )
 
 @app.route('/admin/materiales/nuevo', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def admin_material_nuevo():
     laboratorios = Laboratorio.query.all()
     categorias_disponibles = [
@@ -581,7 +649,7 @@ def admin_material_nuevo():
     )
 
 @app.route('/admin/materiales/<int:id>/editar', methods=['GET', 'POST'])
-@login_required
+@admin_required
 def admin_material_editar(id):
     mat = db.session.get(ElementoLaboratorio, id)
     if not mat:
@@ -627,7 +695,7 @@ def admin_material_editar(id):
     )
 
 @app.route('/admin/materiales/<int:id>/eliminar', methods=['POST'])
-@login_required
+@admin_required
 def admin_material_eliminar(id):
     mat = db.session.get(ElementoLaboratorio, id)
     if not mat:
@@ -640,6 +708,175 @@ def admin_material_eliminar(id):
     db.session.commit()
     flash(f'Material/Equipo "{nombre}" eliminado del pañol.', 'info')
     return redirect(url_for('admin_materiales', lab_id=lab_id))
+
+# --- CRUD DE USUARIOS (ADMINISTRACIÓN) ---
+
+@app.route('/admin/usuarios')
+@admin_required
+def admin_usuarios():
+    buscar = request.args.get('q', '').strip()
+    rol_filtro = request.args.get('rol', '').strip()
+
+    query = Usuario.query
+    if rol_filtro:
+        query = query.filter(Usuario.rol == rol_filtro)
+    if buscar:
+        term = f"%{buscar}%"
+        query = query.filter(
+            (Usuario.username.ilike(term)) |
+            (Usuario.email.ilike(term)) |
+            (Usuario.nombre_completo.ilike(term)) |
+            (Usuario.departamento.ilike(term))
+        )
+
+    usuarios = query.order_by(Usuario.fecha_registro.desc()).all()
+    return render_template('admin_usuarios.html', usuarios=usuarios, buscar=buscar, rol_filtro=rol_filtro)
+
+@app.route('/admin/usuarios/nuevo', methods=['GET', 'POST'])
+@admin_required
+def admin_usuario_nuevo():
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip().lower()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '').strip()
+        nombre_completo = request.form.get('nombre_completo', '').strip()
+        departamento = request.form.get('departamento', '').strip()
+        rol = request.form.get('rol', 'docente').strip()
+        activo = True if request.form.get('activo') else False
+
+        if not (username and email and password):
+            flash('Usuario, correo institucional y contraseña son obligatorios.', 'warning')
+            return redirect(url_for('admin_usuario_nuevo'))
+
+        if len(password) < 4:
+            flash('La contraseña debe tener al menos 4 caracteres.', 'warning')
+            return redirect(url_for('admin_usuario_nuevo'))
+
+        if Usuario.query.filter_by(username=username).first():
+            flash(f'El nombre de usuario "{username}" ya está registrado en el sistema.', 'danger')
+            return redirect(url_for('admin_usuario_nuevo'))
+
+        if Usuario.query.filter_by(email=email).first():
+            flash(f'El correo electrónico "{email}" ya está registrado por otra cuenta.', 'danger')
+            return redirect(url_for('admin_usuario_nuevo'))
+
+        nuevo_usuario = Usuario(
+            username=username,
+            email=email,
+            nombre_completo=nombre_completo or username,
+            departamento=departamento or 'Departamento de Química',
+            rol=rol,
+            activo=activo
+        )
+        nuevo_usuario.set_password(password)
+        db.session.add(nuevo_usuario)
+        db.session.commit()
+
+        flash(f'Usuario @{nuevo_usuario.username} ({nuevo_usuario.rol}) creado exitosamente.', 'success')
+        return redirect(url_for('admin_usuarios'))
+
+    return render_template('admin_usuario_form.html', usuario=None)
+
+@app.route('/admin/usuarios/<int:id>/editar', methods=['GET', 'POST'])
+@admin_required
+def admin_usuario_editar(id):
+    usuario = db.session.get(Usuario, id)
+    if not usuario:
+        flash('Usuario no encontrado.', 'danger')
+        return redirect(url_for('admin_usuarios'))
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip().lower()
+        email = request.form.get('email', '').strip().lower()
+        password = request.form.get('password', '').strip()
+        nombre_completo = request.form.get('nombre_completo', '').strip()
+        departamento = request.form.get('departamento', '').strip()
+        rol = request.form.get('rol', 'docente').strip()
+        activo = True if request.form.get('activo') else False
+
+        if not (username and email):
+            flash('El nombre de usuario y el correo institucional son obligatorios.', 'warning')
+            return redirect(url_for('admin_usuario_editar', id=id))
+
+        # Validar colisión de username
+        existente_username = Usuario.query.filter(Usuario.username == username, Usuario.id != id).first()
+        if existente_username:
+            flash(f'El nombre de usuario "{username}" ya está en uso por otro registro.', 'danger')
+            return redirect(url_for('admin_usuario_editar', id=id))
+
+        # Validar colisión de email
+        existente_email = Usuario.query.filter(Usuario.email == email, Usuario.id != id).first()
+        if existente_email:
+            flash(f'El correo institucional "{email}" ya está en uso por otra cuenta.', 'danger')
+            return redirect(url_for('admin_usuario_editar', id=id))
+
+        # Protección: Si es el propio admin actual, no permitir auto-bloqueo
+        if usuario.id == current_user.id:
+            if not activo:
+                flash('No puedes desactivar tu propia cuenta activa de administrador.', 'warning')
+                activo = True
+            if rol != 'admin':
+                flash('No puedes despojarte a ti mismo de los privilegios de administrador.', 'warning')
+                rol = 'admin'
+
+        usuario.username = username
+        usuario.email = email
+        usuario.nombre_completo = nombre_completo
+        usuario.departamento = departamento
+        usuario.rol = rol
+        usuario.activo = activo
+
+        if password:
+            if len(password) < 4:
+                flash('La nueva contraseña debe tener al menos 4 caracteres.', 'warning')
+                return redirect(url_for('admin_usuario_editar', id=id))
+            usuario.set_password(password)
+
+        db.session.commit()
+        flash(f'Usuario @{usuario.username} actualizado correctamente.', 'success')
+        return redirect(url_for('admin_usuarios'))
+
+    return render_template('admin_usuario_form.html', usuario=usuario)
+
+@app.route('/admin/usuarios/<int:id>/toggle', methods=['POST'])
+@admin_required
+def admin_usuario_toggle(id):
+    usuario = db.session.get(Usuario, id)
+    if not usuario:
+        flash('Usuario no encontrado.', 'danger')
+        return redirect(url_for('admin_usuarios'))
+
+    if usuario.id == current_user.id:
+        flash('No puedes desactivar tu propia cuenta activa de administrador.', 'danger')
+        return redirect(url_for('admin_usuarios'))
+
+    usuario.activo = not usuario.activo
+    db.session.commit()
+    estado_str = "activado" if usuario.activo else "desactivado"
+    flash(f'Usuario @{usuario.username} ha sido {estado_str}.', 'info')
+    return redirect(url_for('admin_usuarios'))
+
+@app.route('/admin/usuarios/<int:id>/eliminar', methods=['POST'])
+@admin_required
+def admin_usuario_eliminar(id):
+    usuario = db.session.get(Usuario, id)
+    if not usuario:
+        flash('Usuario no encontrado.', 'danger')
+        return redirect(url_for('admin_usuarios'))
+
+    if usuario.id == current_user.id:
+        flash('Por seguridad no puedes eliminar tu propia cuenta de administrador.', 'danger')
+        return redirect(url_for('admin_usuarios'))
+
+    username = usuario.username
+    # Desasociar reservas para preservar el historial del laboratorio
+    for res in usuario.reservas:
+        res.usuario_id = None
+
+    db.session.delete(usuario)
+    db.session.commit()
+    flash(f'Usuario @{username} eliminado exitosamente. Sus reservas han sido desvinculadas manteniendo el historial intacto.', 'info')
+    return redirect(url_for('admin_usuarios'))
 
 # --- ENDPOINTS API JSON ---
 

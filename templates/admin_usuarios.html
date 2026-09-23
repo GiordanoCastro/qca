@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Usuarios y Docentes - LabQuímica{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Encabezado y Acciones -->
+    <div class="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="space-y-1">
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-500/10 text-purple-400 text-xs font-bold uppercase tracking-wider mb-1 border border-purple-500/20">
+                <i data-lucide="users" class="w-3.5 h-3.5"></i>
+                Control de Acceso y Docentes
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-black tracking-tight">
+                Gestión de Usuarios del Sistema
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-300">
+                Crea y administra las cuentas docentes autorizadas para agendar laboratorios y gestionar su historial exclusivo.
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ url_for('admin') }}" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition flex items-center gap-1.5">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                Volver al Panel
+            </a>
+            <a href="{{ url_for('admin_usuario_nuevo') }}" class="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-purple-600/30">
+                <i data-lucide="user-plus" class="w-4 h-4"></i>
+                Nuevo Usuario / Docente
+            </a>
+        </div>
+    </div>
+
+    <!-- Barra de Filtros y Búsqueda -->
+    <div class="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+        <form method="GET" action="{{ url_for('admin_usuarios') }}" class="flex flex-1 flex-col sm:flex-row items-center gap-3 w-full">
+            <div class="relative flex-1 w-full">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                <input type="text" name="q" value="{{ buscar }}" placeholder="Buscar por nombre, usuario, correo o departamento..."
+                    class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm text-slate-800 focus:ring-2 focus:ring-purple-500 transition shadow-sm">
+            </div>
+
+            <select name="rol" onchange="this.form.submit()"
+                class="px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm text-slate-800 font-medium focus:ring-2 focus:ring-purple-500 transition shadow-sm w-full sm:w-auto">
+                <option value="">Todos los Roles</option>
+                <option value="admin" {% if rol_filtro == 'admin' %}selected{% endif %}>Administrador</option>
+                <option value="docente" {% if rol_filtro == 'docente' %}selected{% endif %}>Docente</option>
+                <option value="tecnico" {% if rol_filtro == 'tecnico' %}selected{% endif %}>Técnico</option>
+            </select>
+
+            <button type="submit" class="px-4 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition flex items-center justify-center gap-1.5 w-full sm:w-auto">
+                Filtrar
+            </button>
+            {% if buscar or rol_filtro %}
+            <a href="{{ url_for('admin_usuarios') }}" class="px-3 py-2.5 rounded-xl text-slate-500 hover:text-slate-800 text-xs font-semibold">
+                Limpiar
+            </a>
+            {% endif %}
+        </form>
+
+        <span class="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-lg whitespace-nowrap">
+            Total: {{ usuarios|length }} usuario(s)
+        </span>
+    </div>
+
+    <!-- Tabla de Usuarios -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs sm:text-sm">
+                <thead class="bg-slate-50 text-slate-600 font-bold uppercase tracking-wider text-[11px] border-b border-slate-200">
+                    <tr>
+                        <th class="px-5 py-3.5">Usuario / Docente</th>
+                        <th class="px-5 py-3.5">Contacto y Departamento</th>
+                        <th class="px-5 py-3.5 text-center">Rol</th>
+                        <th class="px-5 py-3.5 text-center">Estado</th>
+                        <th class="px-5 py-3.5 text-center">Reservas</th>
+                        <th class="px-5 py-3.5 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for u in usuarios %}
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        <!-- Usuario / Nombre -->
+                        <td class="px-5 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-sm shadow-sm
+                                    {% if u.rol == 'admin' %} bg-purple-100 text-purple-800
+                                    {% elif u.rol == 'tecnico' %} bg-amber-100 text-amber-800
+                                    {% else %} bg-teal-100 text-teal-800 {% endif %}">
+                                    {{ (u.nombre_completo or u.username)[:2]|upper }}
+                                </div>
+                                <div>
+                                    <span class="font-bold text-slate-900 block text-xs sm:text-sm">
+                                        {{ u.nombre_completo or u.username }}
+                                    </span>
+                                    <span class="text-[11px] font-mono text-slate-500">@{{ u.username }}</span>
+                                    {% if u.id == current_user.id %}
+                                    <span class="inline-block ml-1 text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.2 rounded">Tú</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Contacto y Depto -->
+                        <td class="px-5 py-4">
+                            <span class="text-slate-800 font-medium block text-xs">{{ u.email }}</span>
+                            <span class="text-slate-500 text-[11px] block">{{ u.departamento or 'Departamento no asignado' }}</span>
+                        </td>
+
+                        <!-- Rol -->
+                        <td class="px-5 py-4 text-center">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold
+                                {% if u.rol == 'admin' %} bg-purple-100 text-purple-800 border border-purple-200
+                                {% elif u.rol == 'tecnico' %} bg-amber-100 text-amber-800 border border-amber-200
+                                {% else %} bg-teal-100 text-teal-800 border border-teal-200 {% endif %}">
+                                {% if u.rol == 'admin' %}<i data-lucide="shield" class="w-3 h-3"></i> Administrador
+                                {% elif u.rol == 'tecnico' %}<i data-lucide="wrench" class="w-3 h-3"></i> Técnico
+                                {% else %}<i data-lucide="graduation-cap" class="w-3 h-3"></i> Docente{% endif %}
+                            </span>
+                        </td>
+
+                        <!-- Estado Activo/Inactivo -->
+                        <td class="px-5 py-4 text-center">
+                            {% if u.activo %}
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span> Activo
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-rose-600"></span> Inactivo
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Reservas -->
+                        <td class="px-5 py-4 text-center">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-slate-100 text-slate-800">
+                                <i data-lucide="calendar" class="w-3 h-3 text-slate-500"></i>
+                                {{ u.reservas|length }}
+                            </span>
+                        </td>
+
+                        <!-- Acciones -->
+                        <td class="px-5 py-4 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <a href="{{ url_for('admin_usuario_editar', id=u.id) }}" title="Editar usuario"
+                                    class="p-2 rounded-xl text-slate-600 hover:text-purple-700 hover:bg-purple-50 transition border border-slate-200">
+                                    <i data-lucide="pencil" class="w-4 h-4"></i>
+                                </a>
+
+                                {% if u.id != current_user.id %}
+                                <form action="{{ url_for('admin_usuario_toggle', id=u.id) }}" method="POST" class="inline">
+                                    <button type="submit" title="{% if u.activo %}Desactivar acceso{% else %}Activar acceso{% endif %}"
+                                        class="p-2 rounded-xl text-slate-600 hover:text-amber-700 hover:bg-amber-50 transition border border-slate-200">
+                                        {% if u.activo %}
+                                        <i data-lucide="user-x" class="w-4 h-4"></i>
+                                        {% else %}
+                                        <i data-lucide="user-check" class="w-4 h-4 text-emerald-600"></i>
+                                        {% endif %}
+                                    </button>
+                                </form>
+
+                                <form action="{{ url_for('admin_usuario_eliminar', id=u.id) }}" method="POST" class="inline"
+                                    onsubmit="return confirm('¿Seguro que deseas eliminar al usuario @{{ u.username }}? Sus reservas quedarán desvinculadas para no perder el historial.');">
+                                    <button type="submit" title="Eliminar usuario"
+                                        class="p-2 rounded-xl text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition border border-slate-200">
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="px-5 py-12 text-center text-slate-400">
+                            <i data-lucide="user-x" class="w-10 h-10 mx-auto text-slate-300 mb-2"></i>
+                            <p class="font-bold text-slate-600">No se encontraron usuarios registrados.</p>
+                            <p class="text-xs text-slate-400 mt-0.5">Prueba cambiando los filtros de búsqueda o agrega un nuevo usuario.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

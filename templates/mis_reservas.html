@@ -1,57 +1,90 @@
 {% extends 'base.html' %}
 
-{% block title %}Consultar Mis Reservas - LabQuímica{% endblock %}
+{% block title %}{% if es_admin %}Gestión de Reservas{% else %}Mis Reservas{% endif %} - LabQuímica{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-6">
 
-    <!-- Tarjeta de Búsqueda -->
-    <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
-        <div class="max-w-2xl">
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 text-teal-700 text-xs font-bold uppercase tracking-wider mb-2">
-                <i data-lucide="search" class="w-3.5 h-3.5"></i>
-                Portal de Consulta Docente
-            </span>
-            <h1 class="text-2xl font-extrabold text-slate-900">
-                Consultar mis Reservas de Laboratorio
-            </h1>
-            <p class="text-xs sm:text-sm text-slate-600 mt-1">
-                Ingresa tu correo institucional docente o el código de reserva (ej. <span class="font-mono font-bold text-slate-800">LQ-ORG-4401</span>) para consultar estado, imprimir comprobante o registrar la bitácora de cierre.
-            </p>
+    <!-- Tarjeta de Bienvenida / Filtro -->
+    <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div class="max-w-2xl space-y-1">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-bold uppercase tracking-wider mb-1
+                    {% if es_admin %} bg-purple-50 text-purple-700 border border-purple-200
+                    {% else %} bg-teal-50 text-teal-700 border border-teal-200 {% endif %}">
+                    <i data-lucide="{% if es_admin %}shield-check{% else %}calendar-check-2{% endif %}" class="w-3.5 h-3.5"></i>
+                    {% if es_admin %}Panel de Auditoría de Reservas{% else %}Historial Personal Docente{% endif %}
+                </span>
+                <h1 class="text-2xl font-extrabold text-slate-900">
+                    {% if es_admin %}
+                    Registro General de Reservas de Laboratorio
+                    {% else %}
+                    Mis Reservas: {{ current_user.nombre_completo or current_user.username }}
+                    {% endif %}
+                </h1>
+                <p class="text-xs sm:text-sm text-slate-600">
+                    {% if es_admin %}
+                    Visualización y búsqueda global de reservas para laboratorios de química. Filtra por docente, código o asignatura.
+                    {% else %}
+                    Historial exclusivo de tus solicitudes de laboratorio. Consulta el estado, descarga tu comprobante oficial y completa la bitácora post-sesión.
+                    {% endif %}
+                </p>
+            </div>
+
+            {% if not es_admin %}
+            <a href="{{ url_for('reservar') }}" class="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md shadow-teal-600/20 whitespace-nowrap self-start">
+                <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+                Nueva Reserva
+            </a>
+            {% endif %}
         </div>
 
+        <!-- Formulario de Búsqueda -->
         <form action="{{ url_for('mis_reservas') }}" method="POST" class="flex flex-col sm:flex-row gap-3 pt-2">
-            <input type="text" name="criterio" required value="{{ email or codigo or '' }}"
-                placeholder="Ingresa tu correo docente o código LQ-XXX-XXXX"
-                class="flex-1 px-4 py-3 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-teal-500 shadow-sm">
-            <button type="submit" class="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm transition flex items-center justify-center gap-2 shadow-sm">
-                <i data-lucide="search" class="w-4 h-4"></i>
-                Consultar
+            <div class="relative flex-1">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2"></i>
+                <input type="text" name="criterio" value="{{ criterio or email or codigo or '' }}"
+                    placeholder="{% if es_admin %}Buscar por docente, correo, código LQ-XXX o asignatura...{% else %}Filtrar mis reservas por código, práctica o asignatura...{% endif %}"
+                    class="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-300 text-xs sm:text-sm font-medium text-slate-900 focus:ring-2 focus:ring-teal-500 shadow-sm">
+            </div>
+            <button type="submit" class="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm transition flex items-center justify-center gap-2 shadow-sm">
+                Buscar
             </button>
+            {% if criterio or email or codigo %}
+            <a href="{{ url_for('mis_reservas') }}" class="px-4 py-3 rounded-xl text-slate-500 hover:text-slate-800 text-xs font-semibold flex items-center justify-center">
+                Limpiar
+            </a>
+            {% endif %}
         </form>
     </div>
 
     <!-- Resultados -->
     {% if reservas %}
     <div class="space-y-4">
-        <h2 class="text-sm font-bold text-slate-700 uppercase tracking-wider">
-            Reservas Encontradas ({{ reservas|length }})
-        </h2>
+        <div class="flex items-center justify-between">
+            <h2 class="text-xs font-bold text-slate-600 uppercase tracking-wider">
+                Reservas registradas ({{ reservas|length }})
+            </h2>
+            <span class="text-xs text-slate-500">
+                Orden cronológico descendente
+            </span>
+        </div>
 
         {% for r in reservas %}
         <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:border-slate-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div class="space-y-2">
-                <div class="flex items-center gap-2">
-                    <span class="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200">
+            <div class="space-y-2 flex-1">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2.5 py-0.5 rounded-lg border border-slate-200">
                         {{ r.codigo_reserva }}
                     </span>
-                    <span class="text-xs font-bold px-2 py-0.5 rounded
-                        {% if r.estado == 'CONFIRMADA' %} bg-emerald-100 text-emerald-800
-                        {% elif r.estado == 'COMPLETADA' %} bg-sky-100 text-sky-800
-                        {% else %} bg-rose-100 text-rose-800 {% endif %}">
+                    <span class="text-xs font-bold px-2.5 py-0.5 rounded-full
+                        {% if r.estado == 'CONFIRMADA' %} bg-emerald-100 text-emerald-800 border border-emerald-200
+                        {% elif r.estado == 'COMPLETADA' %} bg-sky-100 text-sky-800 border border-sky-200
+                        {% else %} bg-rose-100 text-rose-800 border border-rose-200 {% endif %}">
                         {{ r.estado }}
                     </span>
-                    <span class="text-xs text-slate-500 font-medium">
+                    <span class="text-xs text-slate-500 font-medium flex items-center gap-1 font-mono">
+                        <i data-lucide="clock" class="w-3.5 h-3.5 text-teal-600"></i>
                         {{ r.fecha }} ({{ r.hora_inicio }} - {{ r.hora_fin }} hrs)
                     </span>
                 </div>
@@ -60,22 +93,26 @@
                     {{ r.laboratorio.nombre }}
                 </h3>
                 <p class="text-xs text-slate-600">
-                    <strong>Práctica:</strong> {{ r.titulo_practica }} • <strong>Docente:</strong> {{ r.docente_nombre }}
+                    <strong>Práctica:</strong> {{ r.titulo_practica }} • <strong>Docente:</strong> {{ r.docente_nombre }} ({{ r.asignatura }})
                 </p>
 
-                <div class="text-[11px] text-slate-500 flex items-center gap-2">
+                <div class="text-[11px] text-slate-500 flex flex-wrap items-center gap-2 pt-1">
                     <span>{{ r.elementos|length }} elemento(s) solicitados</span>
                     <span>•</span>
                     {% if r.bitacora_cierre %}
-                    <span class="text-emerald-700 font-semibold">✓ Bitácora de cierre completada</span>
+                    <span class="text-emerald-700 font-semibold flex items-center gap-1">
+                        <i data-lucide="check-circle" class="w-3.5 h-3.5"></i> Bitácora completada
+                    </span>
                     {% else %}
-                    <span class="text-amber-700 font-semibold">⚠ Bitácora pendiente de cierre post-sesión</span>
+                    <span class="text-amber-700 font-semibold flex items-center gap-1">
+                        <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Bitácora pendiente de cierre
+                    </span>
                     {% endif %}
                 </div>
             </div>
 
-            <div class="flex flex-row md:flex-col items-center md:items-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
-                <a href="{{ url_for('ver_reserva', codigo=r.codigo_reserva) }}" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5">
+            <div class="flex flex-row md:flex-col items-center md:items-end gap-2 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100">
+                <a href="{{ url_for('ver_reserva', codigo=r.codigo_reserva) }}" class="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5 whitespace-nowrap">
                     <i data-lucide="eye" class="w-3.5 h-3.5"></i>
                     Ver Ficha / Bitácora
                 </a>
@@ -83,13 +120,25 @@
         </div>
         {% endfor %}
     </div>
-    {% elif email or codigo %}
-    <div class="bg-white rounded-2xl p-10 border border-slate-200 text-center space-y-3">
-        <i data-lucide="alert-circle" class="w-10 h-10 mx-auto text-slate-300"></i>
-        <h3 class="text-sm font-bold text-slate-700">No se encontraron reservas</h3>
-        <p class="text-xs text-slate-500">
-            No encontramos ninguna reserva asociada a "<span class="font-mono font-bold">{{ email or codigo }}</span>". Verifica que el correo o código estén bien escritos.
+    {% else %}
+    <div class="bg-white rounded-3xl p-12 border border-slate-200 text-center space-y-3">
+        <i data-lucide="calendar-x" class="w-12 h-12 mx-auto text-slate-300"></i>
+        <h3 class="text-base font-bold text-slate-800">No se encontraron reservas</h3>
+        <p class="text-xs text-slate-500 max-w-sm mx-auto">
+            {% if criterio or email or codigo %}
+            No hay registros que coincidan con la búsqueda. Intenta con otros términos.
+            {% else %}
+            Actualmente no tienes reservas de laboratorio registradas a tu nombre.
+            {% endif %}
         </p>
+        {% if not es_admin and not (criterio or email or codigo) %}
+        <div class="pt-2">
+            <a href="{{ url_for('reservar') }}" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition shadow-md shadow-teal-600/20">
+                <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+                Agendar Primera Reserva
+            </a>
+        </div>
+        {% endif %}
     </div>
     {% endif %}
 

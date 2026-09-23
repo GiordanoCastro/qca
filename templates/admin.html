@@ -19,7 +19,10 @@
                 Supervisión de prácticas, preparación de equipamiento solicitado y control de bitácoras de entrega.
             </p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ url_for('admin_usuarios') }}" class="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md">
+                <i data-lucide="users" class="w-4 h-4"></i>
+                CRUD Usuarios
+            </a>
             <a href="{{ url_for('admin_laboratorios') }}" class="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md">
                 <i data-lucide="flask-round" class="w-4 h-4"></i>
                 CRUD Laboratorios
@@ -36,14 +39,26 @@
     </div>
 
     <!-- Tarjetas de Acceso Rápido CRUD -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-gradient-to-r from-purple-900/10 via-white to-white p-5 rounded-2xl border border-purple-200 shadow-sm flex items-center justify-between">
+            <div class="space-y-1">
+                <span class="text-xs font-bold text-purple-700 uppercase tracking-wider block">Módulo de Usuarios</span>
+                <h3 class="font-black text-slate-900 text-lg">Cuentas y Docentes</h3>
+                <p class="text-xs text-slate-500">Crea credenciales, asigna departamentos y activa accesos para reservas.</p>
+            </div>
+            <a href="{{ url_for('admin_usuarios') }}" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1 whitespace-nowrap">
+                Gestionar
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            </a>
+        </div>
+
         <div class="bg-gradient-to-r from-teal-900/10 via-white to-white p-5 rounded-2xl border border-teal-200 shadow-sm flex items-center justify-between">
             <div class="space-y-1">
                 <span class="text-xs font-bold text-teal-700 uppercase tracking-wider block">Módulo de Espacios</span>
                 <h3 class="font-black text-slate-900 text-lg">Laboratorios de Química</h3>
                 <p class="text-xs text-slate-500">Crea nuevos laboratorios, ajusta capacidades y normativas de seguridad.</p>
             </div>
-            <a href="{{ url_for('admin_laboratorios') }}" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1">
+            <a href="{{ url_for('admin_laboratorios') }}" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1 whitespace-nowrap">
                 Gestionar
                 <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
             </a>
@@ -55,7 +70,7 @@
                 <h3 class="font-black text-slate-900 text-lg">Materiales e Instrumental</h3>
                 <p class="text-xs text-slate-500">Administra el inventario de equipos especiales, reactores y stock.</p>
             </div>
-            <a href="{{ url_for('admin_materiales') }}" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1">
+            <a href="{{ url_for('admin_materiales') }}" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1 whitespace-nowrap">
                 Gestionar
                 <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
             </a>

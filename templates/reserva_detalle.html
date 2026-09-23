@@ -11,18 +11,26 @@
             <i data-lucide="arrow-left" class="w-4 h-4"></i>
             Volver al inicio
         </a>
+        {% set es_propietario_o_admin = current_user.is_authenticated and (current_user.rol == 'admin' or reserva.usuario_id == current_user.id) %}
         <div class="flex items-center gap-2">
             <button onclick="window.print()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-xs transition flex items-center gap-1.5 shadow-sm">
                 <i data-lucide="printer" class="w-4 h-4 text-teal-400"></i>
                 Imprimir Comprobante / Orden de Laboratorio
             </button>
             {% if reserva.estado != 'CANCELADA' %}
-            <form action="{{ url_for('cancelar_reserva', codigo=reserva.codigo_reserva) }}" method="POST" onsubmit="return confirm('¿Seguro que deseas cancelar esta reserva? Se liberará el laboratorio.');">
-                <button type="submit" class="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs transition flex items-center gap-1.5">
-                    <i data-lucide="x-circle" class="w-4 h-4"></i>
-                    Cancelar Reserva
-                </button>
-            </form>
+                {% if es_propietario_o_admin %}
+                <form action="{{ url_for('cancelar_reserva', codigo=reserva.codigo_reserva) }}" method="POST" onsubmit="return confirm('¿Seguro que deseas cancelar esta reserva? Se liberará el laboratorio.');">
+                    <button type="submit" class="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs transition flex items-center gap-1.5">
+                        <i data-lucide="x-circle" class="w-4 h-4"></i>
+                        Cancelar Reserva
+                    </button>
+                </form>
+                {% else %}
+                <span class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-500 border border-slate-200 text-xs font-medium flex items-center gap-1.5">
+                    <i data-lucide="lock" class="w-3.5 h-3.5 text-slate-400"></i>
+                    Modo Lectura
+                </span>
+                {% endif %}
             {% endif %}
         </div>
     </div>
@@ -240,6 +248,7 @@
             </div>
             {% else %}
             <!-- Formulario para que el docente o encargado registre el cierre de la bitácora -->
+            {% if es_propietario_o_admin %}
             <div class="no-print p-6 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-4">
                 <div class="flex items-center gap-2 text-amber-900 font-bold text-sm">
                     <i data-lucide="edit-3" class="w-4 h-4 text-amber-600"></i>
@@ -284,7 +293,7 @@
                     </div>
 
                     <div class="flex items-center justify-between pt-2">
-                        <input type="text" name="responsable_cierre" value="{{ reserva.docente_nombre }}"
+                        <input type="text" name="responsable_cierre" value="{{ current_user.nombre_completo or reserva.docente_nombre }}"
                             class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs w-64 text-slate-700"
                             placeholder="Nombre del responsable">
                         <button type="submit" class="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition flex items-center gap-1.5">
@@ -294,6 +303,15 @@
                     </div>
                 </form>
             </div>
+            {% else %}
+            <div class="no-print p-5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-500 text-xs flex items-center gap-3">
+                <i data-lucide="clock" class="w-5 h-5 text-amber-600 flex-shrink-0"></i>
+                <div>
+                    <span class="font-bold text-slate-700 block">Bitácora de cierre pendiente</span>
+                    <span>El registro de cierre debe ser completado por el docente titular de la sesión o personal de pañol autorizado.</span>
+                </div>
+            </div>
+            {% endif %}
             {% endif %}
         </div>
 

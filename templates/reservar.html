@@ -164,9 +164,15 @@
 
         <!-- PASO 4: Datos del Docente y Asignatura -->
         <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
-            <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
-                <span class="w-6 h-6 rounded-full bg-teal-600 text-white font-bold text-xs flex items-center justify-center">4</span>
-                <h2 class="text-base font-bold text-slate-900">Datos del Docente y Grupo</h2>
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-teal-600 text-white font-bold text-xs flex items-center justify-center">4</span>
+                    <h2 class="text-base font-bold text-slate-900">Datos del Docente y Grupo</h2>
+                </div>
+                <div class="text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium">
+                    <i data-lucide="user-check" class="w-3.5 h-3.5 text-teal-600"></i>
+                    Sesión: <strong class="text-slate-900">@{{ current_user.username }}</strong>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -175,6 +181,7 @@
                         Nombre Completo del Docente <span class="text-rose-500">*</span>
                     </label>
                     <input type="text" name="docente_nombre" id="docente_nombre" required
+                        value="{{ current_user.nombre_completo or '' }}"
                         class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
                         placeholder="Ej. Dra. Marcela Fuenzalida">
                 </div>
@@ -184,6 +191,7 @@
                         Correo Institucional <span class="text-rose-500">*</span>
                     </label>
                     <input type="email" name="docente_email" id="docente_email" required
+                        value="{{ current_user.email or '' }}"
                         class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
                         placeholder="m.fuenzalida@quimica.edu">
                 </div>
@@ -211,6 +219,7 @@
                     Departamento Académico
                 </label>
                 <input type="text" name="docente_departamento" id="docente_departamento"
+                    value="{{ current_user.departamento or 'Departamento de Química' }}"
                     class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
                     placeholder="Ej. Departamento de Química Orgánica y Farmacia">
             </div>

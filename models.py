@@ -17,9 +17,12 @@ class Usuario(UserMixin, db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(255), nullable=False)
     nombre_completo = db.Column(db.String(120), nullable=True)
-    rol = db.Column(db.String(20), default='admin')  # admin, tecnico
+    departamento = db.Column(db.String(120), nullable=True)
+    rol = db.Column(db.String(20), default='docente')  # admin, docente, tecnico
     activo = db.Column(db.Boolean, default=True)
     fecha_registro = db.Column(db.DateTime, default=datetime.now)
+
+    reservas = db.relationship('Reserva', backref='usuario', lazy=True)
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)
@@ -93,6 +96,7 @@ class Reserva(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     codigo_reserva = db.Column(db.String(20), unique=True, nullable=False, index=True)
     laboratorio_id = db.Column(db.Integer, db.ForeignKey('laboratorios.id'), nullable=False)
+    usuario_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True, index=True)
     
     # Datos del Docente
     docente_nombre = db.Column(db.String(120), nullable=False)
@@ -138,6 +142,8 @@ class Reserva(db.Model):
             'id': self.id,
             'codigo_reserva': self.codigo_reserva,
             'laboratorio_id': self.laboratorio_id,
+            'usuario_id': self.usuario_id,
+            'usuario_username': self.usuario.username if self.usuario else None,
             'laboratorio_nombre': self.laboratorio.nombre if self.laboratorio else '',
             'laboratorio_codigo': self.laboratorio.codigo if self.laboratorio else '',
             'laboratorio_color': self.laboratorio.color if self.laboratorio else 'blue',

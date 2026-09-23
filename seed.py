@@ -12,18 +12,45 @@ def seed_database(app, reset=False):
             print("La base de datos ya cuenta con datos iniciales.")
             return
 
-        # 0. Usuario Administrador del Sistema
+        # 0. Usuarios del Sistema (Admin y Docentes)
         admin = Usuario.query.filter_by(username='admin').first()
         if not admin:
             admin = Usuario(
                 username='admin',
                 email='admin@quimica.edu',
                 nombre_completo='Administrador General de Laboratorios',
+                departamento='Dirección de Laboratorios',
                 rol='admin',
                 activo=True
             )
             admin.set_password('admin123')
             db.session.add(admin)
+
+        docente1 = Usuario.query.filter_by(username='docente1').first()
+        if not docente1:
+            docente1 = Usuario(
+                username='docente1',
+                email='m.fuenzalida@quimica.edu',
+                nombre_completo='Dra. Marcela Fuenzalida',
+                departamento='Departamento de Química Orgánica',
+                rol='docente',
+                activo=True
+            )
+            docente1.set_password('docente123')
+            db.session.add(docente1)
+
+        docente2 = Usuario.query.filter_by(username='docente2').first()
+        if not docente2:
+            docente2 = Usuario(
+                username='docente2',
+                email='r.valenzuela@quimica.edu',
+                nombre_completo='Prof. Roberto Valenzuela',
+                departamento='Departamento de Química Analítica',
+                rol='docente',
+                activo=True
+            )
+            docente2.set_password('docente123')
+            db.session.add(docente2)
 
         # 1. Laboratorio de Química Orgánica y Síntesis
         lab_organica = Laboratorio(
@@ -124,6 +151,7 @@ def seed_database(app, reset=False):
         res_ayer = Reserva(
             codigo_reserva='LQ-ORG-4401',
             laboratorio_id=lab_organica.id,
+            usuario_id=docente1.id,
             docente_nombre='Dra. Marcela Fuenzalida',
             docente_email='m.fuenzalida@quimica.edu',
             docente_departamento='Departamento de Química Orgánica',
@@ -153,6 +181,7 @@ def seed_database(app, reset=False):
         res_hoy = Reserva(
             codigo_reserva='LQ-ANA-7720',
             laboratorio_id=lab_analitica.id,
+            usuario_id=docente2.id,
             docente_nombre='Prof. Roberto Valenzuela',
             docente_email='r.valenzuela@quimica.edu',
             docente_departamento='Departamento de Química Analítica',
@@ -176,6 +205,7 @@ def seed_database(app, reset=False):
         res_manana = Reserva(
             codigo_reserva='LQ-GEN-8914',
             laboratorio_id=lab_general.id,
+            usuario_id=docente1.id,
             docente_nombre='Dra. Elena Santis',
             docente_email='e.santis@quimica.edu',
             docente_departamento='Departamento de Ciencias Básicas',

@@ -163,8 +163,9 @@ class TestSistemaReservasQuimicaPostgres(unittest.TestCase):
 
         with app.app_context():
             lab = Laboratorio.query.filter_by(codigo='LAB-Q102').first()
+            codigo_test = Reserva.generar_codigo()
             res1 = Reserva(
-                codigo_reserva='LQ-PG-001',
+                codigo_reserva=codigo_test,
                 laboratorio_id=lab.id,
                 docente_nombre='Profesor PostgreSQL',
                 docente_email='pg@quimica.edu',

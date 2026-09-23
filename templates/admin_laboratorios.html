@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Laboratorios - LabQuímica{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Encabezado con Botón de Creación -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 text-teal-700 text-xs font-bold uppercase tracking-wider mb-1">
+                <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+                Panel Administrativo
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">
+                Gestión de Laboratorios de Química (CRUD)
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                Crea, edita, activa o desactiva los espacios de laboratorio disponibles para reservas docentes.
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{{ url_for('admin') }}" class="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition">
+                Volver al Panel
+            </a>
+            <a href="{{ url_for('admin_laboratorio_nuevo') }}" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                Nuevo Laboratorio
+            </a>
+        </div>
+    </div>
+
+    <!-- Tabla de Laboratorios -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 uppercase tracking-wider font-bold">
+                        <th class="py-3 px-4">Código</th>
+                        <th class="py-3 px-4">Nombre del Laboratorio</th>
+                        <th class="py-3 px-4">Ubicación</th>
+                        <th class="py-3 px-4 text-center">Capacidad</th>
+                        <th class="py-3 px-4 text-center">Materiales / Equipos</th>
+                        <th class="py-3 px-4 text-center">Estado</th>
+                        <th class="py-3 px-4 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for lab in laboratorios %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3.5 px-4 font-mono font-bold">
+                            <span class="px-2 py-0.5 rounded text-xs
+                                {% if lab.color == 'emerald' %} bg-emerald-100 text-emerald-800
+                                {% elif lab.color == 'blue' %} bg-blue-100 text-blue-800
+                                {% elif lab.color == 'amber' %} bg-amber-100 text-amber-800
+                                {% else %} bg-purple-100 text-purple-800 {% endif %}">
+                                {{ lab.codigo }}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="font-bold text-slate-900 block text-sm">{{ lab.nombre }}</span>
+                            <span class="text-slate-500 text-[11px] line-clamp-1">{{ lab.descripcion or 'Sin descripción' }}</span>
+                        </td>
+                        <td class="py-3.5 px-4 text-slate-600 font-medium">
+                            {{ lab.ubicacion }}
+                        </td>
+                        <td class="py-3.5 px-4 text-center font-bold text-slate-800">
+                            {{ lab.capacidad_alumnos }} alumnos
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <a href="{{ url_for('admin_materiales', lab_id=lab.id) }}" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-teal-50 hover:text-teal-700 text-slate-700 font-semibold transition text-xs">
+                                <i data-lucide="wrench" class="w-3.5 h-3.5 text-teal-600"></i>
+                                <span>{{ lab.elementos|length }} equipos</span>
+                            </a>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <form action="{{ url_for('admin_laboratorio_toggle', id=lab.id) }}" method="POST" class="inline">
+                                {% if lab.activo %}
+                                <button type="submit" title="Haga clic para desactivar" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-200 transition">
+                                    Activo
+                                </button>
+                                {% else %}
+                                <button type="submit" title="Haga clic para activar" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-200 text-slate-600 hover:bg-slate-300 transition">
+                                    Inactivo
+                                </button>
+                                {% endif %}
+                            </form>
+                        </td>
+                        <td class="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                            <a href="{{ url_for('admin_laboratorio_editar', id=lab.id) }}" class="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition inline-flex items-center gap-1">
+                                <i data-lucide="edit-2" class="w-3.5 h-3.5 text-blue-600"></i>
+                                Editar
+                            </a>
+                            <form action="{{ url_for('admin_laboratorio_eliminar', id=lab.id) }}" method="POST" class="inline"
+                                onsubmit="return confirm('¿Estás seguro de eliminar el laboratorio {{ lab.nombre }}? También se eliminarán sus materiales asociados.');">
+                                <button type="submit" class="px-2.5 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-700 font-bold transition inline-flex items-center gap-1">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    Eliminar
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

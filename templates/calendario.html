@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+
+{% block title %}Agenda de Laboratorios (08:30 - 18:30) - LabQuímica{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Encabezado con Filtros -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 text-teal-700 text-xs font-bold uppercase tracking-wider mb-1">
+                <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                Visualizador de Ocupación
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900">
+                Agenda de Laboratorios de Química
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-600 mt-1">
+                Explora los bloques ocupados y disponibles en la franja obligatoria de <strong class="text-slate-900">08:30 a 18:30 hrs</strong>.
+            </p>
+        </div>
+
+        <!-- Filtros Rápidos -->
+        <form method="GET" action="{{ url_for('calendario') }}" class="flex flex-wrap items-center gap-3">
+            <div>
+                <label for="filtro-fecha" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Fecha</label>
+                <input type="date" name="fecha" id="filtro-fecha" value="{{ fecha_sel }}"
+                    class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 bg-white shadow-sm focus:ring-2 focus:ring-teal-500">
+            </div>
+
+            <div>
+                <label for="filtro-lab" class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Laboratorio</label>
+                <select name="lab_id" id="filtro-lab"
+                    class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 bg-white shadow-sm focus:ring-2 focus:ring-teal-500">
+                    <option value="">Todos los Laboratorios</option>
+                    {% for l in laboratorios %}
+                    <option value="{{ l.id }}" {% if lab_id_sel == l.id %}selected{% endif %}>
+                        {{ l.codigo }} - {{ l.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="self-end">
+                <button type="submit" class="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs transition shadow-sm">
+                    Filtrar
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Regla de Horario 08:30 a 18:30 Guía Visual -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="clock" class="w-4 h-4 text-teal-600"></i>
+                Línea de Tiempo del Día Seleccionado: <span class="text-teal-700">{{ fecha_sel }}</span>
+            </h2>
+            <div class="flex items-center gap-4 text-xs">
+                <span class="flex items-center gap-1.5 text-slate-600 font-medium">
+                    <span class="w-3 h-3 rounded bg-emerald-500"></span> Confirmada
+                </span>
+                <span class="flex items-center gap-1.5 text-slate-600 font-medium">
+                    <span class="w-3 h-3 rounded bg-sky-500"></span> Con Bitácora Final
+                </span>
+                <span class="flex items-center gap-1.5 text-slate-600 font-medium">
+                    <span class="w-3 h-3 rounded bg-slate-200"></span> Libre
+                </span>
+            </div>
+        </div>
+
+        <!-- Grilla de Laboratorios y sus Reservas en la Fecha -->
+        <div class="space-y-6">
+            {% for lab in laboratorios %}
+            {% if not lab_id_sel or lab_id_sel == lab.id %}
+            <div class="border border-slate-200 rounded-2xl p-4 bg-slate-50/40 space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div class="flex items-center gap-2.5">
+                        <span class="px-2 py-0.5 rounded text-xs font-bold font-mono
+                            {% if lab.color == 'emerald' %} bg-emerald-100 text-emerald-800
+                            {% elif lab.color == 'blue' %} bg-blue-100 text-blue-800
+                            {% elif lab.color == 'amber' %} bg-amber-100 text-amber-800
+                            {% else %} bg-purple-100 text-purple-800 {% endif %}">
+                            {{ lab.codigo }}
+                        </span>
+                        <h3 class="font-bold text-sm text-slate-900">{{ lab.nombre }}</h3>
+                    </div>
+                    <a href="{{ url_for('reservar', lab=lab.id, fecha=fecha_sel) }}" class="text-xs font-bold text-teal-600 hover:text-teal-700 flex items-center gap-1 self-start sm:self-auto">
+                        <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                        Reservar en este Lab
+                    </a>
+                </div>
+
+                <!-- Lista de Reservas del día para este laboratorio -->
+                {% set reservas_lab_dia = [] %}
+                {% for r in reservas %}
+                    {% if r.laboratorio_id == lab.id and r.fecha == fecha_sel %}
+                        {% set _ = reservas_lab_dia.append(r) %}
+                    {% endif %}
+                {% endfor %}
+
+                {% if reservas_lab_dia %}
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                    {% for r in reservas_lab_dia %}
+                    <div class="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm hover:border-teal-400 transition-all space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold font-mono px-2 py-0.5 rounded
+                                {% if r.estado == 'COMPLETADA' %} bg-sky-100 text-sky-800
+                                {% else %} bg-emerald-100 text-emerald-800 {% endif %}">
+                                {{ r.hora_inicio }} - {{ r.hora_fin }} hrs
+                            </span>
+                            <span class="text-[10px] font-mono text-slate-400">{{ r.codigo_reserva }}</span>
+                        </div>
+                        <h4 class="font-bold text-xs text-slate-900 leading-snug line-clamp-1">
+                            {{ r.titulo_practica }}
+                        </h4>
+                        <p class="text-[11px] text-slate-600">
+                            <strong>Prof:</strong> {{ r.docente_nombre }} ({{ r.asignatura }})
+                        </p>
+                        <div class="text-[10px] text-slate-500 pt-1.5 border-t border-slate-100 flex items-center justify-between">
+                            <span>{{ r.elementos|length }} equipos marcados</span>
+                            <a href="{{ url_for('ver_reserva', codigo=r.codigo_reserva) }}" class="text-teal-600 font-bold hover:underline">
+                                Ver Ficha
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="py-3 px-4 rounded-xl bg-white border border-dashed border-slate-200 text-center text-xs text-slate-500 flex items-center justify-center gap-2">
+                    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-500"></i>
+                    <span>Completamente disponible de 08:30 a 18:30 hrs para el día {{ fecha_sel }}.</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Lista de Todas las Reservas Próximas Registradas -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+            <i data-lucide="list" class="w-4 h-4 text-teal-600"></i>
+            Todas las Prácticas y Sesiones en el Calendario
+        </h3>
+
+        {% if reservas %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+                        <th class="py-2.5 px-3">Código</th>
+                        <th class="py-2.5 px-3">Fecha y Horario</th>
+                        <th class="py-2.5 px-3">Laboratorio</th>
+                        <th class="py-2.5 px-3">Docente / Asignatura</th>
+                        <th class="py-2.5 px-3">Práctica / Equipos</th>
+                        <th class="py-2.5 px-3">Bitácora</th>
+                        <th class="py-2.5 px-3 text-right">Acción</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for r in reservas %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-3 px-3 font-mono font-bold text-slate-800">{{ r.codigo_reserva }}</td>
+                        <td class="py-3 px-3">
+                            <span class="font-bold text-slate-900 block">{{ r.fecha }}</span>
+                            <span class="font-mono text-teal-700 font-semibold">{{ r.hora_inicio }} - {{ r.hora_fin }} hrs</span>
+                        </td>
+                        <td class="py-3 px-3">
+                            <span class="font-semibold text-slate-800 block">{{ r.laboratorio.nombre }}</span>
+                            <span class="text-[11px] text-slate-500">{{ r.laboratorio.codigo }}</span>
+                        </td>
+                        <td class="py-3 px-3">
+                            <span class="font-semibold text-slate-900 block">{{ r.docente_nombre }}</span>
+                            <span class="text-[11px] text-slate-500">{{ r.asignatura }} ({{ r.cantidad_alumnos }} alumnos)</span>
+                        </td>
+                        <td class="py-3 px-3 max-w-[200px]">
+                            <span class="font-medium text-slate-800 truncate block">{{ r.titulo_practica }}</span>
+                            <span class="text-[11px] text-slate-500">{{ r.elementos|length }} elemento(s) de pañol</span>
+                        </td>
+                        <td class="py-3 px-3">
+                            {% if r.bitacora_cierre %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800">
+                                Cierre Registrado
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                                Plan Inicial
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-3 text-right">
+                            <a href="{{ url_for('ver_reserva', codigo=r.codigo_reserva) }}" class="text-xs font-bold text-teal-600 hover:text-teal-700 hover:underline">
+                                Ver Ficha
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-xs text-slate-500 text-center py-4">No hay reservas que coincidan con los filtros.</p>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

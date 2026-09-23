@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventario de Materiales y Equipos - LabQuímica{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Encabezado -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-50 text-amber-700 text-xs font-bold uppercase tracking-wider mb-1">
+                <i data-lucide="boxes" class="w-3.5 h-3.5"></i>
+                Inventario de Pañol
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">
+                Gestión de Materiales y Equipos (CRUD)
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                Administra el instrumental, vidriería, campanas y reactores que los docentes pueden solicitar al reservar.
+            </p>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="{{ url_for('admin') }}" class="px-3.5 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-100 text-xs font-semibold transition">
+                Volver al Panel
+            </a>
+            <a href="{{ url_for('admin_material_nuevo', lab_id=lab_id_sel) }}" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                Nuevo Material / Equipo
+            </a>
+        </div>
+    </div>
+
+    <!-- Filtros de búsqueda -->
+    <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
+        <form method="GET" action="{{ url_for('admin_materiales') }}" class="flex flex-wrap items-center gap-3">
+            <div class="flex-1 min-w-[200px]">
+                <input type="text" name="q" value="{{ buscar }}" placeholder="Buscar por nombre o descripción..."
+                    class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 focus:ring-2 focus:ring-teal-500">
+            </div>
+
+            <div>
+                <select name="lab_id" class="px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 focus:ring-2 focus:ring-teal-500">
+                    <option value="">Todos los Laboratorios</option>
+                    {% for l in laboratorios %}
+                    <option value="{{ l.id }}" {% if lab_id_sel == l.id %}selected{% endif %}>
+                        {{ l.codigo }} - {{ l.nombre }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <select name="categoria" class="px-3 py-2 rounded-xl border border-slate-300 text-xs text-slate-800 focus:ring-2 focus:ring-teal-500">
+                    <option value="">Todas las Categorías</option>
+                    {% for cat in categorias_disponibles %}
+                    <option value="{{ cat }}" {% if categoria_sel == cat %}selected{% endif %}>{{ cat }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition">
+                Filtrar
+            </button>
+            {% if buscar or lab_id_sel or categoria_sel %}
+            <a href="{{ url_for('admin_materiales') }}" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-medium">
+                Limpiar
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Tabla de Materiales -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-slate-200 bg-slate-50 text-slate-600 uppercase tracking-wider font-bold">
+                        <th class="py-3 px-4">Nombre del Equipo / Material</th>
+                        <th class="py-3 px-4">Laboratorio Asignado</th>
+                        <th class="py-3 px-4">Categoría</th>
+                        <th class="py-3 px-4 text-center">Cantidad Disponible</th>
+                        <th class="py-3 px-4">Descripción / Especificación</th>
+                        <th class="py-3 px-4 text-right">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for mat in materiales %}
+                    <tr class="hover:bg-slate-50/80 transition-colors">
+                        <td class="py-3.5 px-4 font-bold text-slate-900 text-sm">
+                            {{ mat.nombre }}
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="font-semibold text-slate-800 block">{{ mat.laboratorio.nombre }}</span>
+                            <span class="font-mono text-[10px] text-slate-500 font-bold">{{ mat.laboratorio.codigo }}</span>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-semibold
+                                {% if 'Seguridad' in mat.categoria %} bg-rose-50 text-rose-800 border border-rose-200
+                                {% elif 'Instrumental' in mat.categoria %} bg-blue-50 text-blue-800 border border-blue-200
+                                {% elif 'Especiales' in mat.categoria %} bg-purple-50 text-purple-800 border border-purple-200
+                                {% elif 'Vidriería' in mat.categoria %} bg-teal-50 text-teal-800 border border-teal-200
+                                {% else %} bg-amber-50 text-amber-800 border border-amber-200 {% endif %}">
+                                {{ mat.categoria }}
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-center font-bold font-mono text-slate-800 text-sm">
+                            {{ mat.cantidad_disponible }}
+                        </td>
+                        <td class="py-3.5 px-4 text-slate-600 max-w-xs">
+                            <span class="line-clamp-2">{{ mat.descripcion or 'Sin descripción adicional' }}</span>
+                        </td>
+                        <td class="py-3.5 px-4 text-right space-x-1.5 whitespace-nowrap">
+                            <a href="{{ url_for('admin_material_editar', id=mat.id) }}" class="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold transition inline-flex items-center gap-1">
+                                <i data-lucide="edit-2" class="w-3.5 h-3.5 text-blue-600"></i>
+                                Editar
+                            </a>
+                            <form action="{{ url_for('admin_material_eliminar', id=mat.id) }}" method="POST" class="inline"
+                                onsubmit="return confirm('¿Seguro que deseas eliminar este material del pañol?');">
+                                <button type="submit" class="px-2.5 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-700 font-bold transition inline-flex items-center gap-1">
+                                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                    Eliminar
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="py-8 text-center text-slate-400 text-xs">
+                            No se encontraron materiales con los filtros seleccionados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

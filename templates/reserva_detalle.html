@@ -1,0 +1,315 @@
+{% extends 'base.html' %}
+
+{% block title %}Ficha de Reserva {{ reserva.codigo_reserva }} - LabQuímica{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- Barra Superior de Acciones (No Imprimible) -->
+    <div class="flex flex-wrap items-center justify-between gap-3 no-print">
+        <a href="{{ url_for('index') }}" class="text-xs font-semibold text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            Volver al inicio
+        </a>
+        <div class="flex items-center gap-2">
+            <button onclick="window.print()" class="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-xs transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="printer" class="w-4 h-4 text-teal-400"></i>
+                Imprimir Comprobante / Orden de Laboratorio
+            </button>
+            {% if reserva.estado != 'CANCELADA' %}
+            <form action="{{ url_for('cancelar_reserva', codigo=reserva.codigo_reserva) }}" method="POST" onsubmit="return confirm('¿Seguro que deseas cancelar esta reserva? Se liberará el laboratorio.');">
+                <button type="submit" class="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-semibold text-xs transition flex items-center gap-1.5">
+                    <i data-lucide="x-circle" class="w-4 h-4"></i>
+                    Cancelar Reserva
+                </button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- FICHA OFICIAL DE RESERVA Y ORDEN DE PRÁCTICA -->
+    <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6 print:border-none print:shadow-none print:p-0">
+
+        <!-- Cabecera del Documento -->
+        <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-200 pb-6">
+            <div class="flex items-start gap-4">
+                <div class="w-14 h-14 rounded-2xl bg-teal-600 flex items-center justify-center text-white shadow-md shadow-teal-600/20">
+                    <i data-lucide="flask-conical" class="w-7 h-7"></i>
+                </div>
+                <div>
+                    <span class="text-xs font-bold text-teal-600 uppercase tracking-widest block">Comprobante Oficial de Reserva</span>
+                    <h1 class="text-2xl font-black text-slate-900 tracking-tight">
+                        {{ reserva.laboratorio.nombre }}
+                    </h1>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        {{ reserva.laboratorio.codigo }} • {{ reserva.laboratorio.ubicacion }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Código y Estado -->
+            <div class="sm:text-right space-y-1">
+                <span class="text-xs text-slate-400 block font-mono">Código de Solicitud</span>
+                <span class="text-xl font-extrabold font-mono text-slate-900 bg-slate-100 px-3 py-1 rounded-lg border border-slate-200 inline-block">
+                    {{ reserva.codigo_reserva }}
+                </span>
+                <div>
+                    {% if reserva.estado == 'CONFIRMADA' %}
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                        <i data-lucide="check-circle-2" class="w-3 h-3"></i> Confirmada
+                    </span>
+                    {% elif reserva.estado == 'COMPLETADA' %}
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-sky-100 text-sky-800 border border-sky-200">
+                        <i data-lucide="badge-check" class="w-3 h-3"></i> Práctica y Bitácora Completada
+                    </span>
+                    {% else %}
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                        <i data-lucide="slash" class="w-3 h-3"></i> Cancelada
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Ficha de Datos Principales -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+            <div>
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Fecha Asignada</span>
+                <span class="text-sm font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
+                    <i data-lucide="calendar" class="w-4 h-4 text-teal-600"></i>
+                    {{ reserva.fecha }}
+                </span>
+            </div>
+            <div>
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Horario de Sesión</span>
+                <span class="text-sm font-bold text-teal-700 font-mono flex items-center gap-1.5 mt-0.5">
+                    <i data-lucide="clock" class="w-4 h-4 text-teal-600"></i>
+                    {{ reserva.hora_inicio }} - {{ reserva.hora_fin }} hrs
+                </span>
+            </div>
+            <div>
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Docente a Cargo</span>
+                <span class="text-sm font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
+                    <i data-lucide="user" class="w-4 h-4 text-teal-600"></i>
+                    {{ reserva.docente_nombre }}
+                </span>
+            </div>
+            <div>
+                <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Estudiantes Estimados</span>
+                <span class="text-sm font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
+                    <i data-lucide="users" class="w-4 h-4 text-teal-600"></i>
+                    {{ reserva.cantidad_alumnos }} alumnos
+                </span>
+            </div>
+        </div>
+
+        <!-- Información Académica -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="p-4 rounded-xl border border-slate-200">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Asignatura y Carrera</span>
+                <p class="text-sm font-bold text-slate-800 mt-1">{{ reserva.asignatura }}</p>
+                <p class="text-xs text-slate-500">{{ reserva.docente_departamento }} • {{ reserva.docente_email }}</p>
+            </div>
+            <div class="p-4 rounded-xl border border-slate-200">
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider block">Título de la Práctica</span>
+                <p class="text-sm font-bold text-slate-800 mt-1">{{ reserva.titulo_practica }}</p>
+            </div>
+        </div>
+
+        <!-- Elementos y Equipamiento Solicitado para la Sesión -->
+        <div class="space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-2">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="boxes" class="w-4 h-4 text-teal-600"></i>
+                    Equipamiento y Elementos Seleccionados (Hoja de Pañol)
+                </h3>
+                <span class="text-xs font-bold text-slate-500">
+                    {{ reserva.elementos|length }} elemento(s)
+                </span>
+            </div>
+
+            {% if reserva.elementos %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {% for el in reserva.elementos %}
+                <div class="p-3 rounded-xl border border-slate-200 bg-slate-50/70 flex items-start gap-3">
+                    <div class="w-5 h-5 rounded border border-slate-300 bg-white flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i data-lucide="check" class="w-3.5 h-3.5 text-teal-600 font-bold"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold text-slate-900 block">{{ el.nombre }}</span>
+                        <span class="text-[11px] text-slate-500 block">{{ el.categoria }} • {{ el.descripcion or 'Disponible' }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="p-4 rounded-xl bg-slate-50 text-slate-500 text-xs italic">
+                El docente no especificó elementos adicionales del pañol para esta práctica.
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- SECCIÓN 1 DE BITÁCORA: Plan Inicial y Reactivos -->
+        <div class="space-y-4 pt-2 border-t border-slate-200">
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <i data-lucide="file-text" class="w-4 h-4 text-emerald-600"></i>
+                Bitácora de Trabajo: Plan Inicial y Bioseguridad
+            </h3>
+
+            <div class="p-4 rounded-2xl bg-emerald-50/40 border border-emerald-100 space-y-3 text-xs">
+                <div>
+                    <span class="font-bold text-emerald-950 uppercase tracking-wider text-[11px] block">
+                        Metodología y Objetivos de la Sesión:
+                    </span>
+                    <p class="text-slate-700 mt-1 whitespace-pre-line leading-relaxed font-sans">
+                        {{ reserva.bitacora_plan }}
+                    </p>
+                </div>
+
+                {% if reserva.reactivos_utilizados %}
+                <div class="pt-2 border-t border-emerald-100/70">
+                    <span class="font-bold text-emerald-950 uppercase tracking-wider text-[11px] block">
+                        Reactivos y Sustancias Químicas Declaradas:
+                    </span>
+                    <p class="text-slate-700 mt-0.5">{{ reserva.reactivos_utilizados }}</p>
+                </div>
+                {% endif %}
+
+                {% if reserva.observaciones_seguridad %}
+                <div class="pt-2 border-t border-emerald-100/70">
+                    <span class="font-bold text-amber-900 uppercase tracking-wider text-[11px] block">
+                        Medidas Preventivas de Seguridad y Residuos:
+                    </span>
+                    <p class="text-amber-950 mt-0.5">{{ reserva.observaciones_seguridad }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- SECCIÓN 2 DE BITÁCORA: Cierre de Práctica y Novedades -->
+        <div class="space-y-4 pt-2 border-t border-slate-200">
+            <div class="flex items-center justify-between">
+                <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="clipboard-check" class="w-4 h-4 text-teal-600"></i>
+                    Bitácora de Trabajo: Cierre de Sesión y Novedades
+                </h3>
+                {% if reserva.bitacora_cierre %}
+                <span class="text-xs bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded border border-sky-200">
+                    Registrado el {{ reserva.fecha_cierre_bitacora.strftime('%d/%m/%Y %H:%M') if reserva.fecha_cierre_bitacora else '' }}
+                </span>
+                {% endif %}
+            </div>
+
+            {% if reserva.bitacora_cierre %}
+            <!-- Bitácora ya registrada -->
+            <div class="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 text-xs">
+                <div>
+                    <span class="font-bold text-slate-700 uppercase tracking-wider text-[11px] block">
+                        Trabajo Realizado y Conclusiones de la Sesión:
+                    </span>
+                    <p class="text-slate-800 mt-1 whitespace-pre-line leading-relaxed">
+                        {{ reserva.bitacora_cierre }}
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-3 border-t border-slate-200">
+                    <div>
+                        <span class="font-bold text-slate-700 uppercase tracking-wider text-[11px] block">
+                            Incidentes, Roturas o Novedades de Material:
+                        </span>
+                        <p class="text-slate-800 mt-0.5 font-medium">
+                            {{ reserva.incidentes_novedades or 'Sin incidentes reportados.' }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <span class="font-bold text-slate-700 uppercase tracking-wider text-[11px] block">
+                            Estado de Recepción / Devolución del Laboratorio:
+                        </span>
+                        <span class="inline-block mt-1 font-bold px-2.5 py-0.5 rounded-md text-xs
+                            {% if 'Conforme' in reserva.estado_devolucion %} bg-emerald-100 text-emerald-800
+                            {% elif 'Observación' in reserva.estado_devolucion %} bg-amber-100 text-amber-800
+                            {% else %} bg-slate-200 text-slate-800 {% endif %}">
+                            {{ reserva.estado_devolucion }}
+                        </span>
+                        {% if reserva.responsable_cierre %}
+                        <p class="text-[11px] text-slate-500 mt-1">Registrado por: {{ reserva.responsable_cierre }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <!-- Formulario para que el docente o encargado registre el cierre de la bitácora -->
+            <div class="no-print p-6 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-4">
+                <div class="flex items-center gap-2 text-amber-900 font-bold text-sm">
+                    <i data-lucide="edit-3" class="w-4 h-4 text-amber-600"></i>
+                    Registrar Cierre de Bitácora de esta Sesión
+                </div>
+                <p class="text-xs text-amber-800">
+                    Al finalizar la práctica de laboratorio, registra el resumen de actividades ejecutadas, novedades o roturas de material y la entrega de equipos.
+                </p>
+
+                <form action="{{ url_for('actualizar_bitacora', codigo=reserva.codigo_reserva) }}" method="POST" class="space-y-4">
+                    <div>
+                        <label for="bitacora_cierre" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                            Trabajo Realizado en la Sesión <span class="text-rose-500">*</span>
+                        </label>
+                        <textarea name="bitacora_cierre" id="bitacora_cierre" rows="3" required
+                            class="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs focus:ring-2 focus:ring-teal-500 transition shadow-sm"
+                            placeholder="Describe cómo se desarrolló la práctica, resultados obtenidos por los grupos, etc..."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label for="incidentes_novedades" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                Novedades, Roturas o Incidentes
+                            </label>
+                            <input type="text" name="incidentes_novedades" id="incidentes_novedades"
+                                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs focus:ring-2 focus:ring-teal-500 transition shadow-sm"
+                                placeholder="Ej. Sin novedades / Se quebró un tubo de ensayo">
+                        </div>
+
+                        <div>
+                            <label for="estado_devolucion" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
+                                Estado de Entrega del Laboratorio
+                            </label>
+                            <select name="estado_devolucion" id="estado_devolucion"
+                                class="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-white text-slate-800 text-xs focus:ring-2 focus:ring-teal-500 transition shadow-sm">
+                                <option value="Conforme y Limpio">Conforme y Limpio (Mesadas y piletas despejadas)</option>
+                                <option value="Conforme con Observación en Material">Conforme con Observación en Material</option>
+                                <option value="Pendiente de Revisión por Pañol">Pendiente de Revisión por Pañol</option>
+                                <option value="Incidente Reportado a Seguridad">Incidente Reportado a Seguridad</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2">
+                        <input type="text" name="responsable_cierre" value="{{ reserva.docente_nombre }}"
+                            class="px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs w-64 text-slate-700"
+                            placeholder="Nombre del responsable">
+                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs shadow-md shadow-teal-600/20 transition flex items-center gap-1.5">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            Guardar Cierre de Bitácora
+                        </button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Firmas Institucionales para Impresión -->
+        <div class="hidden print:grid grid-cols-2 gap-12 pt-16 mt-12 border-t border-slate-300 text-center text-xs">
+            <div>
+                <div class="border-b border-slate-800 pb-1 w-3/4 mx-auto font-bold">{{ reserva.docente_nombre }}</div>
+                <span class="text-slate-600 block mt-1">Firma Docente a Cargo</span>
+            </div>
+            <div>
+                <div class="border-b border-slate-800 pb-1 w-3/4 mx-auto font-bold">Encargado de Pañol / Laboratorio</div>
+                <span class="text-slate-600 block mt-1">Recepción de Espacio y Equipamiento</span>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

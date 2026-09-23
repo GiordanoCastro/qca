@@ -1,0 +1,118 @@
+{% extends 'base.html' %}
+
+{% block title %}{% if lab %}Editar Laboratorio {{ lab.codigo }}{% else %}Nuevo Laboratorio{% endif %} - LabQuímica{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto space-y-6">
+
+    <!-- Encabezado -->
+    <div class="flex items-center justify-between">
+        <div>
+            <a href="{{ url_for('admin_laboratorios') }}" class="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1 mb-1">
+                <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                Volver a Laboratorios
+            </a>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">
+                {% if lab %}Editar Laboratorio: {{ lab.nombre }}{% else %}Registrar Nuevo Laboratorio{% endif %}
+            </h1>
+        </div>
+    </div>
+
+    <!-- Formulario -->
+    <form action="{% if lab %}{{ url_for('admin_laboratorio_editar', id=lab.id) }}{% else %}{{ url_for('admin_laboratorio_nuevo') }}{% endif %}" method="POST"
+        class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-5">
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label for="codigo" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Código Identificador <span class="text-rose-500">*</span>
+                </label>
+                <input type="text" name="codigo" id="codigo" required value="{{ lab.codigo if lab else '' }}"
+                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 font-mono text-sm uppercase focus:ring-2 focus:ring-teal-500"
+                    placeholder="Ej. LAB-Q105">
+            </div>
+
+            <div>
+                <label for="color" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Color Temático
+                </label>
+                <select name="color" id="color" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500">
+                    <option value="emerald" {% if lab and lab.color == 'emerald' %}selected{% endif %}>Verde Esmeralda (Orgánica/Síntesis)</option>
+                    <option value="blue" {% if lab and lab.color == 'blue' %}selected{% endif %}>Azul Cobalto (Analítica/Precisión)</option>
+                    <option value="amber" {% if lab and lab.color == 'amber' %}selected{% endif %}>Ámbar (General/Inorgánica)</option>
+                    <option value="purple" {% if lab and lab.color == 'purple' %}selected{% endif %}>Púrpura (Fisicoquímica/Especial)</option>
+                </select>
+            </div>
+        </div>
+
+        <div>
+            <label for="nombre" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Nombre Oficial del Laboratorio <span class="text-rose-500">*</span>
+            </label>
+            <input type="text" name="nombre" id="nombre" required value="{{ lab.nombre if lab else '' }}"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm font-medium focus:ring-2 focus:ring-teal-500"
+                placeholder="Ej. Laboratorio de Bioquímica y Cinética Enzimática">
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label for="ubicacion" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Ubicación Física <span class="text-rose-500">*</span>
+                </label>
+                <input type="text" name="ubicacion" id="ubicacion" required value="{{ lab.ubicacion if lab else '' }}"
+                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500"
+                    placeholder="Ej. Edificio B - 3er Piso, Sala 304">
+            </div>
+
+            <div>
+                <label for="capacidad_alumnos" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Capacidad Máxima de Alumnos <span class="text-rose-500">*</span>
+                </label>
+                <input type="number" name="capacidad_alumnos" id="capacidad_alumnos" min="1" max="100" required
+                    value="{{ lab.capacidad_alumnos if lab else 20 }}"
+                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500">
+            </div>
+        </div>
+
+        <div>
+            <label for="descripcion" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Descripción y Alcance del Laboratorio
+            </label>
+            <textarea name="descripcion" id="descripcion" rows="3"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500"
+                placeholder="Describe las actividades, infraestructura y características del laboratorio...">{{ lab.descripcion if lab else '' }}</textarea>
+        </div>
+
+        <div>
+            <label for="normas_seguridad" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
+                Normativas de Seguridad y EPP Obligatorio
+            </label>
+            <textarea name="normas_seguridad" id="normas_seguridad" rows="2"
+                class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-teal-500"
+                placeholder="Ej. Gafas de seguridad, bata 100% algodón, prohibido trabajo individual...">{{ lab.normas_seguridad if lab else '' }}</textarea>
+        </div>
+
+        {% if lab %}
+        <div class="pt-2">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" name="activo" value="1" {% if lab.activo %}checked{% endif %}
+                    class="rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-4 h-4">
+                <span class="text-xs font-bold text-slate-800">Laboratorio Activo y Disponible para Reservas</span>
+            </label>
+        </div>
+        {% endif %}
+
+        <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+            <a href="{{ url_for('admin_laboratorios') }}" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-bold hover:bg-slate-50 transition">
+                Cancelar
+            </a>
+            <button type="submit" class="px-6 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white text-xs font-bold shadow-md transition flex items-center gap-1.5">
+                <i data-lucide="check" class="w-4 h-4"></i>
+                {% if lab %}Guardar Cambios{% else %}Crear Laboratorio{% endif %}
+            </button>
+        </div>
+
+    </form>
+
+</div>
+{% endblock %}

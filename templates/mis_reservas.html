@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+
+{% block title %}Consultar Mis Reservas - LabQuímica{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- Tarjeta de Búsqueda -->
+    <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+        <div class="max-w-2xl">
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 text-teal-700 text-xs font-bold uppercase tracking-wider mb-2">
+                <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                Portal de Consulta Docente
+            </span>
+            <h1 class="text-2xl font-extrabold text-slate-900">
+                Consultar mis Reservas de Laboratorio
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-600 mt-1">
+                Ingresa tu correo institucional docente o el código de reserva (ej. <span class="font-mono font-bold text-slate-800">LQ-ORG-4401</span>) para consultar estado, imprimir comprobante o registrar la bitácora de cierre.
+            </p>
+        </div>
+
+        <form action="{{ url_for('mis_reservas') }}" method="POST" class="flex flex-col sm:flex-row gap-3 pt-2">
+            <input type="text" name="criterio" required value="{{ email or codigo or '' }}"
+                placeholder="Ingresa tu correo docente o código LQ-XXX-XXXX"
+                class="flex-1 px-4 py-3 rounded-xl border border-slate-300 text-sm font-medium text-slate-900 focus:ring-2 focus:ring-teal-500 shadow-sm">
+            <button type="submit" class="px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-sm transition flex items-center justify-center gap-2 shadow-sm">
+                <i data-lucide="search" class="w-4 h-4"></i>
+                Consultar
+            </button>
+        </form>
+    </div>
+
+    <!-- Resultados -->
+    {% if reservas %}
+    <div class="space-y-4">
+        <h2 class="text-sm font-bold text-slate-700 uppercase tracking-wider">
+            Reservas Encontradas ({{ reservas|length }})
+        </h2>
+
+        {% for r in reservas %}
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:border-slate-300 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                    <span class="font-mono font-bold text-xs bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200">
+                        {{ r.codigo_reserva }}
+                    </span>
+                    <span class="text-xs font-bold px-2 py-0.5 rounded
+                        {% if r.estado == 'CONFIRMADA' %} bg-emerald-100 text-emerald-800
+                        {% elif r.estado == 'COMPLETADA' %} bg-sky-100 text-sky-800
+                        {% else %} bg-rose-100 text-rose-800 {% endif %}">
+                        {{ r.estado }}
+                    </span>
+                    <span class="text-xs text-slate-500 font-medium">
+                        {{ r.fecha }} ({{ r.hora_inicio }} - {{ r.hora_fin }} hrs)
+                    </span>
+                </div>
+
+                <h3 class="text-base font-bold text-slate-900">
+                    {{ r.laboratorio.nombre }}
+                </h3>
+                <p class="text-xs text-slate-600">
+                    <strong>Práctica:</strong> {{ r.titulo_practica }} • <strong>Docente:</strong> {{ r.docente_nombre }}
+                </p>
+
+                <div class="text-[11px] text-slate-500 flex items-center gap-2">
+                    <span>{{ r.elementos|length }} elemento(s) solicitados</span>
+                    <span>•</span>
+                    {% if r.bitacora_cierre %}
+                    <span class="text-emerald-700 font-semibold">✓ Bitácora de cierre completada</span>
+                    {% else %}
+                    <span class="text-amber-700 font-semibold">⚠ Bitácora pendiente de cierre post-sesión</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="flex flex-row md:flex-col items-center md:items-end gap-2 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                <a href="{{ url_for('ver_reserva', codigo=r.codigo_reserva) }}" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1.5">
+                    <i data-lucide="eye" class="w-3.5 h-3.5"></i>
+                    Ver Ficha / Bitácora
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% elif email or codigo %}
+    <div class="bg-white rounded-2xl p-10 border border-slate-200 text-center space-y-3">
+        <i data-lucide="alert-circle" class="w-10 h-10 mx-auto text-slate-300"></i>
+        <h3 class="text-sm font-bold text-slate-700">No se encontraron reservas</h3>
+        <p class="text-xs text-slate-500">
+            No encontramos ninguna reserva asociada a "<span class="font-mono font-bold">{{ email or codigo }}</span>". Verifica que el correo o código estén bien escritos.
+        </p>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

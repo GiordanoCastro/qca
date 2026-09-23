@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Panel de Encargado de Laboratorio y Pañol - LabQuímica{% endblock %}
+
+{% block content %}
+<div class="space-y-8">
+
+    <!-- Encabezado del Panel -->
+    <div class="bg-slate-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="space-y-1">
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 text-xs font-bold uppercase tracking-wider mb-1 border border-amber-500/20">
+                <i data-lucide="shield" class="w-3.5 h-3.5"></i>
+                Personal Técnico y Pañolero
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-black tracking-tight">
+                Panel de Gestión de Laboratorios y Pañol
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-300">
+                Supervisión de prácticas, preparación de equipamiento solicitado y control de bitácoras de entrega.
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{{ url_for('admin_laboratorios') }}" class="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md">
+                <i data-lucide="flask-round" class="w-4 h-4"></i>
+                CRUD Laboratorios
+            </a>
+            <a href="{{ url_for('admin_materiales') }}" class="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition flex items-center gap-1.5 shadow-md">
+                <i data-lucide="boxes" class="w-4 h-4"></i>
+                CRUD Materiales
+            </a>
+            <a href="{{ url_for('bitacoras') }}" class="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold text-xs transition flex items-center gap-1.5">
+                <i data-lucide="book-open" class="w-4 h-4 text-emerald-400"></i>
+                Auditoría Bitácoras
+            </a>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Acceso Rápido CRUD -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="bg-gradient-to-r from-teal-900/10 via-white to-white p-5 rounded-2xl border border-teal-200 shadow-sm flex items-center justify-between">
+            <div class="space-y-1">
+                <span class="text-xs font-bold text-teal-700 uppercase tracking-wider block">Módulo de Espacios</span>
+                <h3 class="font-black text-slate-900 text-lg">Laboratorios de Química</h3>
+                <p class="text-xs text-slate-500">Crea nuevos laboratorios, ajusta capacidades y normativas de seguridad.</p>
+            </div>
+            <a href="{{ url_for('admin_laboratorios') }}" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1">
+                Gestionar
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            </a>
+        </div>
+
+        <div class="bg-gradient-to-r from-amber-900/10 via-white to-white p-5 rounded-2xl border border-amber-200 shadow-sm flex items-center justify-between">
+            <div class="space-y-1">
+                <span class="text-xs font-bold text-amber-700 uppercase tracking-wider block">Módulo de Pañol</span>
+                <h3 class="font-black text-slate-900 text-lg">Materiales e Instrumental</h3>
+                <p class="text-xs text-slate-500">Administra el inventario de equipos especiales, reactores y stock.</p>
+            </div>
+            <a href="{{ url_for('admin_materiales') }}" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1">
+                Gestionar
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            </a>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 1: Hoja de Preparación de Equipos para Hoy (Pañol) -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div class="flex items-center gap-2">
+                <i data-lucide="wrench" class="w-5 h-5 text-amber-600"></i>
+                <h2 class="text-base font-bold text-slate-900">
+                    Hoja de Pañol: Equipos y Elementos a Preparar Hoy ({{ hoy }})
+                </h2>
+            </div>
+            <span class="text-xs text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md font-mono">
+                Horario: 08:30 a 18:30 hrs
+            </span>
+        </div>
+
+        {% if reservas_hoy %}
+        <div class="space-y-4">
+            {% for r in reservas_hoy %}
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/60 hover:bg-white transition-all space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-mono font-bold bg-teal-100 text-teal-800 px-2 py-0.5 rounded">
+                            {{ r.hora_inicio }} - {{ r.hora_fin }} hrs
+                        </span>
+                        <span class="font-bold text-sm text-slate-900">{{ r.laboratorio.nombre }}</span>
+                        <span class="text-xs font-mono text-slate-500">({{ r.codigo_reserva }})</span>
+                    </div>
+                    <div class="text-xs text-slate-600 font-medium">
+                        Docente: <strong>{{ r.docente_nombre }}</strong> • {{ r.asignatura }}
+                    </div>
+                </div>
+
+                <!-- Elementos a alistar -->
+                <div>
+                    <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
+                        Elementos solicitados por el docente para esta sesión:
+                    </span>
+                    {% if r.elementos %}
+                    <div class="flex flex-wrap gap-2">
+                        {% for el in r.elementos %}
+                        <div class="bg-white border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-2 shadow-2xs">
+                            <i data-lucide="check-square" class="w-3.5 h-3.5 text-teal-600"></i>
+                            <div>
+                                <span class="text-xs font-bold text-slate-800">{{ el.nombre }}</span>
+                                <span class="text-[10px] text-slate-400 block">{{ el.categoria }}</span>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <span class="text-xs text-slate-400 italic">No se requirió instrumental especial de pañol.</span>
+                    {% endif %}
+                </div>
+
+                <!-- Acceso a la ficha -->
+                <div class="flex items-center justify-between pt-2 text-xs">
+                    <div class="text-slate-500">
+                        <strong>Reactivos:</strong> {{ r.reactivos_utilizados or 'Sin reactivos especiales declarados' }}
+                    </div>
+                    <a href="{{ url_for('ver_reserva', codigo=r.codigo_reserva) }}" class="font-bold text-teal-600 hover:underline">
+                        Abrir Ficha / Registrar Cierre &rarr;
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="py-8 text-center text-slate-400 text-sm">
+            <i data-lucide="check-check" class="w-8 h-8 mx-auto text-slate-300 mb-2"></i>
+            No hay prácticas programadas para hoy. El pañol no tiene preparaciones pendientes.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- SECCIÓN 2: Próximas Prácticas en los Próximos Días -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+            <i data-lucide="calendar-days" class="w-5 h-5 text-teal-600"></i>
+            Próximas Prácticas Programadas
+        </h3>
+
+        {% if proximas_reservas %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead>
+                    <tr class="border-b border-slate-200 text-slate-500 uppercase tracking-wider font-semibold">
+                        <th class="py-2.5 px-3">Código</th>
+                        <th class="py-2.5 px-3">Fecha y Horario</th>
+                        <th class="py-2.5 px-3">Laboratorio</th>
+                        <th class="py-2.5 px-3">Docente</th>
+                        <th class="py-2.5 px-3">Equipos Solicitados</th>
+                        <th class="py-2.5 px-3 text-right">Ficha</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for r in proximas_reservas %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="py-3 px-3 font-mono font-bold text-slate-800">{{ r.codigo_reserva }}</td>
+                        <td class="py-3 px-3 font-semibold text-slate-900">
+                            {{ r.fecha }} <span class="text-teal-700 font-mono">({{ r.hora_inicio }} - {{ r.hora_fin }} hrs)</span>
+                        </td>
+                        <td class="py-3 px-3 text-slate-800">{{ r.laboratorio.nombre }}</td>
+                        <td class="py-3 px-3">{{ r.docente_nombre }} ({{ r.asignatura }})</td>
+                        <td class="py-3 px-3">
+                            <span class="bg-slate-100 text-slate-700 px-2 py-0.5 rounded font-medium">
+                                {{ r.elementos|length }} elemento(s)
+                            </span>
+                        </td>
+                        <td class="py-3 px-3 text-right">
+                            <a href="{{ url_for('ver_reserva', codigo=r.codigo_reserva) }}" class="text-teal-600 font-bold hover:underline">
+                                Ver
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-xs text-slate-500 py-3">No hay reservas futuras agendadas.</p>
+        {% endif %}
+    </div>
+
+    <!-- SECCIÓN 3: Estado de los Laboratorios y Normativas -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h3 class="text-base font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
+            <i data-lucide="layout-grid" class="w-5 h-5 text-teal-600"></i>
+            Estado de Espacios Físicos y Capacidad
+        </h3>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {% for lab in laboratorios %}
+            <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50 space-y-2">
+                <span class="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-white border border-slate-200 text-slate-700">
+                    {{ lab.codigo }}
+                </span>
+                <h4 class="font-bold text-xs text-slate-900 leading-snug">{{ lab.nombre }}</h4>
+                <div class="text-[11px] text-slate-500 space-y-0.5 pt-1 border-t border-slate-200/60">
+                    <p>Capacidad: <strong>{{ lab.capacidad_alumnos }} puestos</strong></p>
+                    <p>Equipos registrados: <strong>{{ lab.elementos|length }}</strong></p>
+                    <p class="text-emerald-700 font-semibold">Estado: Operativo</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

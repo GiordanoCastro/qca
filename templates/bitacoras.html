@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+
+{% block title %}Historial de Bitácoras de Trabajo - LabQuímica{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Encabezado y Buscador -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-emerald-50 text-emerald-700 text-xs font-bold uppercase tracking-wider mb-1">
+                <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+                Auditoría y Trazabilidad Científica
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900">
+                Historial de Bitácoras de Trabajo
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-600 mt-1">
+                Registro oficial de planes experimentales, reactivos utilizados, incidentes de seguridad y novedades de entrega.
+            </p>
+        </div>
+
+        <!-- Filtros de búsqueda -->
+        <form method="GET" action="{{ url_for('bitacoras') }}" class="flex flex-wrap items-center gap-2">
+            <div>
+                <input type="text" name="q" value="{{ buscar }}" placeholder="Buscar por docente, reactivo, título..."
+                    class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 bg-white w-64 shadow-sm focus:ring-2 focus:ring-teal-500">
+            </div>
+
+            <div>
+                <select name="lab_id"
+                    class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-800 bg-white shadow-sm focus:ring-2 focus:ring-teal-500">
+                    <option value="">Todos los Labs</option>
+                    {% for l in laboratorios %}
+                    <option value="{{ l.id }}" {% if lab_id_sel == l.id %}selected{% endif %}>
+                        {{ l.codigo }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" class="px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-xs transition shadow-sm flex items-center gap-1">
+                <i data-lucide="search" class="w-3.5 h-3.5"></i>
+                Buscar
+            </button>
+            {% if buscar or lab_id_sel %}
+            <a href="{{ url_for('bitacoras') }}" class="px-3 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-100 text-xs font-semibold">
+                Limpiar
+            </a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Lista de Tarjetas de Bitácoras -->
+    <div class="space-y-4">
+        {% if reservas %}
+            {% for r in reservas %}
+            <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4 hover:border-slate-300 transition-all">
+                <!-- Cabecera de la Bitácora -->
+                <div class="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded text-xs font-mono font-bold
+                                {% if r.laboratorio.color == 'emerald' %} bg-emerald-100 text-emerald-800
+                                {% elif r.laboratorio.color == 'blue' %} bg-blue-100 text-blue-800
+                                {% elif r.laboratorio.color == 'amber' %} bg-amber-100 text-amber-800
+                                {% else %} bg-purple-100 text-purple-800 {% endif %}">
+                                {{ r.laboratorio.codigo }}
+                            </span>
+                            <h2 class="text-base font-bold text-slate-900">
+                                {{ r.laboratorio.nombre }}
+                            </h2>
+                        </div>
+                        <p class="text-xs text-slate-500">
+                            <strong>Práctica:</strong> {{ r.titulo_practica }} • <strong>Asignatura:</strong> {{ r.asignatura }}
+                        </p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                        <span class="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg border border-slate-200">
+                            {{ r.fecha }} | {{ r.hora_inicio }} - {{ r.hora_fin }} hrs
+                        </span>
+                        <a href="{{ url_for('ver_reserva', codigo=r.codigo_reserva) }}" class="px-3 py-1 rounded-lg bg-teal-50 hover:bg-teal-100 text-teal-700 text-xs font-bold transition">
+                            Ficha {{ r.codigo_reserva }}
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Contenido Comparativo: Plan Inicial vs Cierre de Bitácora -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Columna 1: Plan Inicial y Reactivos -->
+                    <div class="p-4 rounded-xl bg-slate-50/70 border border-slate-200/80 space-y-2 text-xs">
+                        <div class="flex items-center gap-1.5 font-bold text-slate-800 text-[11px] uppercase tracking-wider">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5 text-teal-600"></i>
+                            Plan Inicial Registrado al Reservar:
+                        </div>
+                        <p class="text-slate-700 leading-relaxed font-sans">
+                            {{ r.bitacora_plan }}
+                        </p>
+                        {% if r.reactivos_utilizados %}
+                        <div class="pt-2 border-t border-slate-200/60">
+                            <span class="font-bold text-slate-700 block text-[11px]">Reactivos declarados:</span>
+                            <span class="text-slate-600">{{ r.reactivos_utilizados }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Columna 2: Cierre de Sesión y Novedades -->
+                    <div class="p-4 rounded-xl border space-y-2 text-xs
+                        {% if r.bitacora_cierre %} bg-emerald-50/40 border-emerald-200/70
+                        {% else %} bg-amber-50/40 border-amber-200/70 {% endif %}">
+                        <div class="flex items-center justify-between">
+                            <span class="flex items-center gap-1.5 font-bold text-[11px] uppercase tracking-wider
+                                {% if r.bitacora_cierre %} text-emerald-900 {% else %} text-amber-900 {% endif %}">
+                                <i data-lucide="check-square" class="w-3.5 h-3.5 {% if r.bitacora_cierre %} text-emerald-600 {% else %} text-amber-600 {% endif %}"></i>
+                                Cierre de Sesión / Novedades:
+                            </span>
+                            {% if r.bitacora_cierre %}
+                            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
+                                Completado
+                            </span>
+                            {% else %}
+                            <span class="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded">
+                                Pendiente de Cierre
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        {% if r.bitacora_cierre %}
+                        <p class="text-slate-800 leading-relaxed">
+                            {{ r.bitacora_cierre }}
+                        </p>
+                        <div class="pt-2 border-t border-emerald-200/50 space-y-1">
+                            <div>
+                                <span class="font-bold text-slate-700 text-[11px]">Novedades/Roturas:</span>
+                                <span class="text-slate-800 font-medium">{{ r.incidentes_novedades or 'Sin incidentes' }}</span>
+                            </div>
+                            <div class="flex items-center justify-between pt-1">
+                                <div>
+                                    <span class="font-bold text-slate-700 text-[11px]">Estado Entrega:</span>
+                                    <span class="font-bold text-emerald-800">{{ r.estado_devolucion }}</span>
+                                </div>
+                                <span class="text-[10px] text-slate-500">{{ r.fecha_cierre_bitacora.strftime('%d/%m/%Y %H:%M') if r.fecha_cierre_bitacora else '' }}</span>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="py-4 text-center space-y-2">
+                            <p class="text-amber-800 text-[11px]">
+                                La práctica aún no tiene reporte de cierre. El docente puede registrarlo al finalizar la sesión.
+                            </p>
+                            <a href="{{ url_for('ver_reserva', codigo=r.codigo_reserva) }}" class="inline-block px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-bold text-[11px] transition shadow-sm">
+                                Registrar Cierre de Bitácora
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Pie de la tarjeta -->
+                <div class="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
+                    <div>
+                        <strong>Docente Responsable:</strong> {{ r.docente_nombre }} ({{ r.docente_email }})
+                    </div>
+                    <div>
+                        <strong>Equipos Solicitados:</strong>
+                        {% for el in r.elementos %}
+                        <span class="inline-block bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[10px] mr-1">{{ el.nombre }}</span>
+                        {% else %}
+                        <span class="italic text-slate-400">Sin equipos especiales</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+        <div class="bg-white rounded-2xl p-12 border border-slate-200 text-center space-y-3">
+            <i data-lucide="book-x" class="w-10 h-10 mx-auto text-slate-300"></i>
+            <h3 class="text-base font-bold text-slate-700">No se encontraron bitácoras</h3>
+            <p class="text-xs text-slate-500 max-w-sm mx-auto">
+                No hay registros que coincidan con los criterios de búsqueda seleccionados.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

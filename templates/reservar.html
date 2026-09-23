@@ -1,0 +1,419 @@
+{% extends 'base.html' %}
+
+{% block title %}Reservar Laboratorio de Química{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- Encabezado -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-teal-50 text-teal-700 text-xs font-bold uppercase tracking-wider mb-1">
+                <i data-lucide="calendar-plus" class="w-3.5 h-3.5"></i>
+                Formulario de Reserva Docente
+            </div>
+            <h1 class="text-2xl font-extrabold text-slate-900">
+                Reserva Exclusiva de Laboratorio de Química
+            </h1>
+            <p class="text-sm text-slate-600 mt-1">
+                Selecciona el laboratorio, define el horario dentro de la franja operativa (<strong class="text-slate-900">08:30 a 18:30 hrs</strong>), elige los elementos requeridos e indica el plan de bitácora.
+            </p>
+        </div>
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-600 space-y-1 self-start md:self-auto min-w-[210px]">
+            <div class="flex items-center gap-1.5 font-bold text-slate-800">
+                <i data-lucide="clock" class="w-4 h-4 text-teal-600"></i>
+                Horario: 08:30 - 18:30
+            </div>
+            <div class="text-[11px] text-slate-500">
+                Reserva de laboratorio completo por sesión docente.
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario Principal -->
+    <form action="{{ url_for('reservar') }}" method="POST" id="form-reserva" class="space-y-6">
+
+        <!-- PASO 1: Laboratorio y Fecha -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <span class="w-6 h-6 rounded-full bg-teal-600 text-white font-bold text-xs flex items-center justify-center">1</span>
+                <h2 class="text-base font-bold text-slate-900">Selección de Laboratorio y Fecha</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                    <label for="laboratorio_id" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Laboratorio a Reservar <span class="text-rose-500">*</span>
+                    </label>
+                    <select name="laboratorio_id" id="laboratorio_id" required
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm">
+                        <option value="">-- Selecciona un Laboratorio --</option>
+                        {% for lab in laboratorios %}
+                        <option value="{{ lab.id }}" {% if lab_id_param == lab.id %}selected{% endif %}>
+                            {{ lab.codigo }} - {{ lab.nombre }} (Capacidad: {{ lab.capacidad_alumnos }} alumnos)
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <span id="lab-ubicacion-info" class="block text-xs text-slate-500 mt-1.5 italic"></span>
+                </div>
+
+                <div>
+                    <label for="fecha" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Fecha de la Práctica <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="date" name="fecha" id="fecha" value="{{ fecha_param }}" required
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm">
+                    <span class="block text-xs text-slate-500 mt-1.5">Lunes a Viernes</span>
+                </div>
+            </div>
+
+            <!-- Panel dinámico de disponibilidad y horarios ocupados -->
+            <div id="disponibilidad-box" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                <div class="flex items-center justify-between text-xs font-bold text-slate-700">
+                    <span class="flex items-center gap-1.5">
+                        <i data-lucide="calendar-clock" class="w-4 h-4 text-teal-600"></i>
+                        Disponibilidad en la fecha seleccionada:
+                    </span>
+                    <span id="disp-fecha-tag" class="text-slate-500 font-mono"></span>
+                </div>
+                <div id="disp-lista" class="text-xs space-y-1">
+                    <!-- Se rellena vía JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- PASO 2: Horario de Reserva (08:30 a 18:30) -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-teal-600 text-white font-bold text-xs flex items-center justify-center">2</span>
+                    <h2 class="text-base font-bold text-slate-900">Horario de la Reserva (08:30 a 18:30 hrs)</h2>
+                </div>
+                <span class="text-xs bg-teal-50 text-teal-800 font-bold px-2 py-0.5 rounded border border-teal-200">
+                    Rango Obligatorio: 08:30 - 18:30
+                </span>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                    <label for="hora_inicio" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Hora de Inicio <span class="text-rose-500">*</span> (mín. 08:30)
+                    </label>
+                    <input type="time" name="hora_inicio" id="hora_inicio" min="08:30" max="18:00" step="300" required
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
+                        placeholder="08:30">
+                    <p class="text-[11px] text-slate-500 mt-1">Ingresa desde las 08:30 am</p>
+                </div>
+
+                <div>
+                    <label for="hora_fin" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Hora de Término <span class="text-rose-500">*</span> (máx. 18:30)
+                    </label>
+                    <input type="time" name="hora_fin" id="hora_fin" min="09:00" max="18:30" step="300" required
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
+                        placeholder="18:30">
+                    <p class="text-[11px] text-slate-500 mt-1">Límite máximo permitido: 18:30 hrs</p>
+                </div>
+            </div>
+
+            <!-- Botones de turnos rápidos -->
+            <div>
+                <span class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                    O selecciona un bloque habitual:
+                </span>
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" class="btn-turno px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-teal-50 hover:border-teal-300 text-xs font-semibold text-slate-700 transition" data-ini="08:30" data-fin="10:00">
+                        08:30 - 10:00 (M1)
+                    </button>
+                    <button type="button" class="btn-turno px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-teal-50 hover:border-teal-300 text-xs font-semibold text-slate-700 transition" data-ini="10:15" data-fin="12:00">
+                        10:15 - 12:00 (M2)
+                    </button>
+                    <button type="button" class="btn-turno px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-teal-50 hover:border-teal-300 text-xs font-semibold text-slate-700 transition" data-ini="12:15" data-fin="14:00">
+                        12:15 - 14:00 (M3)
+                    </button>
+                    <button type="button" class="btn-turno px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-teal-50 hover:border-teal-300 text-xs font-semibold text-slate-700 transition" data-ini="14:15" data-fin="16:00">
+                        14:15 - 16:00 (T1)
+                    </button>
+                    <button type="button" class="btn-turno px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 hover:bg-teal-50 hover:border-teal-300 text-xs font-semibold text-slate-700 transition" data-ini="16:15" data-fin="18:30">
+                        16:15 - 18:30 (T2)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- PASO 3: Selección de Elementos y Equipos del Laboratorio -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-teal-600 text-white font-bold text-xs flex items-center justify-center">3</span>
+                    <h2 class="text-base font-bold text-slate-900">Elementos y Equipamiento a Ocupar</h2>
+                </div>
+                <span class="text-xs text-slate-500">
+                    Marca los equipos que requerirás preparados en la sesión
+                </span>
+            </div>
+
+            <!-- Contenedor dinámico de elementos según el laboratorio seleccionado -->
+            <div id="contenedor-elementos" class="space-y-4">
+                <div class="py-8 text-center text-slate-400 text-sm">
+                    <i data-lucide="package-search" class="w-8 h-8 mx-auto text-slate-300 mb-2"></i>
+                    Selecciona un laboratorio en el Paso 1 para cargar su inventario de elementos y equipos.
+                </div>
+            </div>
+        </div>
+
+        <!-- PASO 4: Datos del Docente y Asignatura -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <div class="flex items-center gap-2 border-b border-slate-100 pb-3">
+                <span class="w-6 h-6 rounded-full bg-teal-600 text-white font-bold text-xs flex items-center justify-center">4</span>
+                <h2 class="text-base font-bold text-slate-900">Datos del Docente y Grupo</h2>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div>
+                    <label for="docente_nombre" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Nombre Completo del Docente <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" name="docente_nombre" id="docente_nombre" required
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
+                        placeholder="Ej. Dra. Marcela Fuenzalida">
+                </div>
+
+                <div>
+                    <label for="docente_email" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Correo Institucional <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="email" name="docente_email" id="docente_email" required
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
+                        placeholder="m.fuenzalida@quimica.edu">
+                </div>
+
+                <div>
+                    <label for="asignatura" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Asignatura / Carrera <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" name="asignatura" id="asignatura" required
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
+                        placeholder="Ej. Química Orgánica II (QMC-204)">
+                </div>
+
+                <div>
+                    <label for="cantidad_alumnos" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Cantidad Estimada de Alumnos <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="number" name="cantidad_alumnos" id="cantidad_alumnos" min="1" max="50" value="15" required
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm">
+                </div>
+            </div>
+
+            <div>
+                <label for="docente_departamento" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                    Departamento Académico
+                </label>
+                <input type="text" name="docente_departamento" id="docente_departamento"
+                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
+                    placeholder="Ej. Departamento de Química Orgánica y Farmacia">
+            </div>
+        </div>
+
+        <!-- PASO 5: Bitácora de Trabajo Inicial (Plan de Trabajo y Seguridad Química) -->
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <span class="w-6 h-6 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center">5</span>
+                    <h2 class="text-base font-bold text-slate-900">Bitácora de Trabajo (Plan Inicial de la Sesión)</h2>
+                </div>
+                <span class="text-xs bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded border border-emerald-200">
+                    Requerimiento Técnico Obligatorio
+                </span>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label for="titulo_practica" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Título de la Práctica / Experimento <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" name="titulo_practica" id="titulo_practica" required
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
+                        placeholder="Ej. Síntesis y Purificación de Aspirina / Titulación Redox">
+                </div>
+
+                <div>
+                    <label for="bitacora_plan" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                        Plan de Trabajo y Metodología (Bitácora Inicial) <span class="text-rose-500">*</span>
+                    </label>
+                    <textarea name="bitacora_plan" id="bitacora_plan" rows="3" required
+                        class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
+                        placeholder="Describe el procedimiento que desarrollará el grupo, etapas de la práctica y objetivo experimental..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="reactivos_utilizados" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                            Reactivos y Sustancias Químicas a Manipular
+                        </label>
+                        <textarea name="reactivos_utilizados" id="reactivos_utilizados" rows="2"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
+                            placeholder="Ej. Ácido salicílico, anhídrido acético, ácido fosfórico 85%, etanol 95%"></textarea>
+                    </div>
+
+                    <div>
+                        <label for="observaciones_seguridad" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                            Observaciones de Bioseguridad y Residuos
+                        </label>
+                        <textarea name="observaciones_seguridad" id="observaciones_seguridad" rows="2"
+                            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-slate-800 text-sm font-medium focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition shadow-sm"
+                            placeholder="Ej. Uso obligatorio de campana extractora. Neutralización de residuos ácidos."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botón de Envío -->
+        <div class="flex items-center justify-end gap-4 pt-2">
+            <a href="{{ url_for('index') }}" class="px-5 py-3 rounded-xl border border-slate-300 text-slate-700 font-semibold text-sm hover:bg-slate-100 transition">
+                Cancelar
+            </a>
+            <button type="submit" class="px-7 py-3 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-bold text-sm shadow-lg shadow-teal-600/20 transition flex items-center gap-2">
+                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                Confirmar Reserva de Laboratorio
+            </button>
+        </div>
+
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const selectLab = document.getElementById('laboratorio_id');
+    const inputFecha = document.getElementById('fecha');
+    const inputHoraIni = document.getElementById('hora_inicio');
+    const inputHoraFin = document.getElementById('hora_fin');
+    const contenedorElementos = document.getElementById('contenedor-elementos');
+    const dispBox = document.getElementById('disponibilidad-box');
+    const dispLista = document.getElementById('disp-lista');
+    const dispFechaTag = document.getElementById('disp-fecha-tag');
+    const labUbicacionInfo = document.getElementById('lab-ubicacion-info');
+
+    // Botones de turnos rápidos
+    document.querySelectorAll('.btn-turno').forEach(btn => {
+        btn.addEventListener('click', () => {
+            inputHoraIni.value = btn.getAttribute('data-ini');
+            inputHoraFin.value = btn.getAttribute('data-fin');
+        });
+    });
+
+    // Cargar elementos y disponibilidad al cambiar laboratorio
+    async function actualizarElementosYDisponibilidad() {
+        const labId = selectLab.value;
+        const fecha = inputFecha.value;
+
+        if (!labId) {
+            contenedorElementos.innerHTML = `
+                <div class="py-8 text-center text-slate-400 text-sm">
+                    <i data-lucide="package-search" class="w-8 h-8 mx-auto text-slate-300 mb-2"></i>
+                    Selecciona un laboratorio en el Paso 1 para cargar su inventario de elementos y equipos.
+                </div>
+            `;
+            dispBox.classList.add('hidden');
+            lucide.createIcons();
+            return;
+        }
+
+        // 1. Fetch elementos
+        try {
+            const resp = await fetch(`/api/laboratorio/${labId}/elementos`);
+            const data = await resp.json();
+
+            if (data.categorias) {
+                let html = '';
+                for (const [categoria, items] of Object.entries(data.categorias)) {
+                    html += `
+                        <div class="border border-slate-200 rounded-xl p-4 bg-slate-50/50">
+                            <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-teal-500"></span>
+                                ${categoria}
+                            </h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                    `;
+                    items.forEach(el => {
+                        html += `
+                            <label class="flex items-start gap-2.5 p-2 rounded-lg bg-white border border-slate-200 hover:border-teal-300 cursor-pointer transition select-none">
+                                <input type="checkbox" name="elementos_ids" value="${el.id}" class="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500 w-4 h-4">
+                                <div class="text-xs">
+                                    <span class="font-bold text-slate-800 block">${el.nombre}</span>
+                                    <span class="text-slate-500 text-[11px] block">${el.descripcion || 'Disponible en pañol'} (Disp: ${el.cantidad_disponible})</span>
+                                </div>
+                            </label>
+                        `;
+                    });
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                }
+                contenedorElementos.innerHTML = html;
+            }
+
+            if (data.laboratorio && data.laboratorio.normas) {
+                labUbicacionInfo.textContent = `Normas de seguridad: ${data.laboratorio.normas}`;
+            }
+        } catch (err) {
+            console.error('Error al cargar elementos:', err);
+        }
+
+        // 2. Fetch disponibilidad
+        if (fecha) {
+            try {
+                const respDisp = await fetch(`/api/disponibilidad?lab_id=${labId}&fecha=${fecha}`);
+                const dataDisp = await respDisp.json();
+                
+                dispBox.classList.remove('hidden');
+                dispFechaTag.textContent = fecha;
+
+                if (dataDisp.reservas_ocupadas && dataDisp.reservas_ocupadas.length > 0) {
+                    let ocupadosHtml = `
+                        <p class="text-amber-800 font-medium">Este laboratorio tiene las siguientes sesiones reservadas en este día:</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1">
+                    `;
+                    dataDisp.reservas_ocupadas.forEach(res => {
+                        ocupadosHtml += `
+                            <div class="bg-amber-100/70 border border-amber-300 text-amber-900 px-2.5 py-1.5 rounded-lg flex items-center justify-between">
+                                <div>
+                                    <span class="font-bold font-mono">${res.hora_inicio} - ${res.hora_fin} hrs</span>
+                                    <span class="block text-[11px] text-amber-800">${res.docente} (${res.asignatura})</span>
+                                </div>
+                                <span class="text-[10px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">Ocupado</span>
+                            </div>
+                        `;
+                    });
+                    ocupadosHtml += `</div><p class="text-[11px] text-slate-500 mt-1">Asegúrate de programar tu práctica en los horarios libres entre 08:30 y 18:30 hrs.</p>`;
+                    dispLista.innerHTML = ocupadosHtml;
+                } else {
+                    dispLista.innerHTML = `
+                        <div class="bg-emerald-50 border border-emerald-200 text-emerald-800 px-3 py-2 rounded-lg flex items-center gap-2">
+                            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+                            <span>Laboratorio completamente libre durante todo el día (08:30 a 18:30 hrs).</span>
+                        </div>
+                    `;
+                }
+            } catch (err) {
+                console.error('Error al cargar disponibilidad:', err);
+            }
+        }
+
+        lucide.createIcons();
+    }
+
+    selectLab.addEventListener('change', actualizarElementosYDisponibilidad);
+    inputFecha.addEventListener('change', actualizarElementosYDisponibilidad);
+
+    // Ejecutar si viene con preselección
+    if (selectLab.value) {
+        actualizarElementosYDisponibilidad();
+    }
+});
+</script>
+{% endblock %}

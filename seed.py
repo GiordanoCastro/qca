@@ -7,10 +7,10 @@ def seed_database(app, reset=False):
             db.drop_all()
         db.create_all()
 
-        admin_existe = Usuario.query.filter_by(username='admin').first()
-        labs_existen = Laboratorio.query.count() > 0
+        admin_existe = Usuario.query.first() is not None
+        labs_existen = Laboratorio.query.first() is not None
 
-        # 0. Usuario Administrador Inicial (Único usuario por defecto para gestionar el sistema)
+        # 0. Usuario Administrador Inicial (solo si la tabla de usuarios está vacía)
         if not admin_existe:
             admin = Usuario(
                 username='admin',
@@ -23,7 +23,7 @@ def seed_database(app, reset=False):
             admin.set_password('admin123')
             db.session.add(admin)
 
-        # 1. Infraestructura de Laboratorios y Equipos
+        # 1. Infraestructura de Laboratorios y Equipos (solo si no existe ningún laboratorio)
         if not labs_existen:
             # 1. Laboratorio de Química Orgánica y Síntesis
             lab_organica = Laboratorio(
@@ -114,18 +114,8 @@ def seed_database(app, reset=False):
 
             db.session.add_all(elem_org + elem_ana + elem_gen + elem_fis)
 
-        # Depuración preventiva: Eliminar reservas o usuarios ficticios de ejemplo si aún existieran
-        reservas_ficticias = Reserva.query.filter(Reserva.codigo_reserva.in_(['LQ-ORG-4401', 'LQ-ANA-7720', 'LQ-GEN-8914'])).all()
-        for rf in reservas_ficticias:
-            rf.elementos.clear()
-            db.session.delete(rf)
-
-        usuarios_ficticios = Usuario.query.filter(Usuario.username.in_(['docente1', 'docente2'])).all()
-        for uf in usuarios_ficticios:
-            db.session.delete(uf)
-
         db.session.commit()
-        print("Base de datos limpia y lista: Solo usuario admin e infraestructura física de laboratorios.")
+        print("Inicialización base completada.")
 
 if __name__ == '__main__':
     from app import app

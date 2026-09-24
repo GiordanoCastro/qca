@@ -1,5 +1,8 @@
-import unittest
 import os
+# Aislar pruebas unitarias en SQLite en memoria para garantizar que NUNCA afecten la base de datos real (PostgreSQL/Neon)
+os.environ['DATABASE_URL'] = 'sqlite:///:memory:'
+
+import unittest
 from datetime import date, datetime
 from app import app, validar_horario, hay_solapamiento
 from models import db, Usuario, Laboratorio, ElementoLaboratorio, Reserva
@@ -19,6 +22,7 @@ class TestSistemaReservasQuimicaPostgres(unittest.TestCase):
     def tearDown(self):
         with app.app_context():
             db.session.remove()
+            db.drop_all()
 
     def test_01_laboratorios_y_admin_en_postgres(self):
         """Verifica que se hayan cargado el usuario admin, los 4 laboratorios y sus elementos en PostgreSQL"""

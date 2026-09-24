@@ -23,12 +23,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
-# Inicialización segura para entornos serverless (Vercel)
+# Inicialización segura y no destructiva de base de datos
 with app.app_context():
     try:
         db.create_all()
-        # Si la base de datos no tiene administrador o laboratorios, inicializar estructura base sin datos ficticios
-        if Usuario.query.filter_by(username='admin').first() is None or Laboratorio.query.count() == 0:
+        # Solo inicializar si la base de datos está totalmente vacía (sin usuarios ni laboratorios).
+        # Los datos gestionados (usuarios, laboratorios, materiales, reservas, etc.) NUNCA se borran ni reinician.
+        if Usuario.query.first() is None or Laboratorio.query.first() is None:
             from seed import seed_database
             seed_database(app, reset=False)
     except Exception as e:
